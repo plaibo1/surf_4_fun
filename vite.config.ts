@@ -9,7 +9,6 @@ const useHttps = process.env.HTTPS === '1'
 export default defineConfig({
   plugins: [vue(), tailwindcss(), ...(useHttps ? [basicSsl()] : [])],
   server: {
-    https: useHttps,
     host: true,
     proxy: {
       '/socket.io': {

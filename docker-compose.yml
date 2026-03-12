@@ -1,0 +1,22 @@
+services:
+  # Сервер сигналинга Socket.IO (WebRTC)
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      - PORT=8000
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  # Фронтенд: статика Vue + nginx, проксирует /socket.io на server
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
