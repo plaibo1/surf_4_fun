@@ -45,14 +45,12 @@ export function useVoiceRoom() {
   function setVolume(peerId: string, value: number) {
     peerVolumes.value = { ...peerVolumes.value, [peerId]: value };
     const p = participants.value.get(peerId);
-    if (p?.stream) setRemoteStreamVolume(peerId, p.stream, value);
+    if (p) setRemoteStreamVolume(peerId, value);
   }
 
   const peerConnections = ref<Map<string, RTCPeerConnection>>(new Map());
   /** ICE candidates received before remoteDescription is set — drain after setRemoteDescription */
   const iceCandidateQueues = ref<Map<string, RTCIceCandidateInit[]>>(new Map());
-  const audioContext = ref<AudioContext | null>(null);
-  const gainNodes = ref<Map<string, GainNode>>(new Map());
 
   async function getLocalStream(): Promise<MediaStream> {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -61,20 +59,6 @@ export function useVoiceRoom() {
     });
     myStream.value = stream;
     return stream;
-  }
-
-  function ensureAudioContext(): AudioContext {
-    if (!audioContext.value) {
-      audioContext.value = new AudioContext();
-    }
-    return audioContext.value;
-  }
-
-  async function resumeAudioContextIfNeeded() {
-    const ctx = audioContext.value;
-    if (ctx?.state === "suspended") {
-      await ctx.resume();
-    }
   }
 
   /** Drain queued ICE candidates for a peer after setRemoteDescription. */
@@ -96,20 +80,12 @@ export function useVoiceRoom() {
 
   function setRemoteStreamVolume(
     peerId: string,
-    stream: MediaStream,
     volume: number,
   ) {
-    const ctx = ensureAudioContext();
-    let gain = gainNodes.value.get(peerId);
-    if (!gain) {
-      const source = ctx.createMediaStreamSource(stream);
-      gain = ctx.createGain();
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      gainNodes.value.set(peerId, gain);
-      resumeAudioContextIfNeeded();
+    const p = participants.value.get(peerId);
+    if (p?.audioElement) {
+      p.audioElement.volume = volume / 100;
     }
-    gain.gain.value = volume / 100;
   }
 
   function createPeerConnection(remoteId: string, remoteName: string) {
@@ -137,15 +113,17 @@ export function useVoiceRoom() {
       if (!stream.getAudioTracks().length && !stream.getVideoTracks().length)
         return;
       participant.stream = stream;
-      // Dummy <audio> element: browsers (especially mobile/Chrome) require a media element to "activate" stream playback
+      // HTML <audio> element is standard for playing remote streams. Must set autoplay and playsInline.
+      // Do NOT set it to muted, otherwise standard volume control won't emit sound.
       const audioEl = new Audio();
+      audioEl.autoplay = true;
+      audioEl.setAttribute("playsinline", "true");
       audioEl.srcObject = stream;
-      audioEl.muted = true; // we route sound via GainNode to ctx.destination
-      audioEl.play().catch((err) => console.warn("[WebRTC] dummy audio play failed for", remoteId, err));
+      audioEl.volume = getVolume(remoteId) / 100;
+      // Appending to body ensures it is not garbage collected and reliably plays on mobile
+      document.body.appendChild(audioEl);
+      audioEl.play().catch((err) => console.warn("[WebRTC] audio play failed for", remoteId, err));
       participant.audioElement = audioEl;
-      resumeAudioContextIfNeeded();
-      const vol = getVolume(remoteId);
-      setRemoteStreamVolume(remoteId, stream, vol);
       participants.value = new Map(participants.value);
     };
 
@@ -181,9 +159,10 @@ export function useVoiceRoom() {
       return;
     }
 
-    // На мобильных AudioContext по умолчанию suspended — разблокируем по жесту (мы только что нажали «Войти»)
-    ensureAudioContext();
-    await resumeAudioContextIfNeeded();
+    // Web Audio API has been removed, so no suspended context to resume here
+    // Safari might still require a user gesture to play audio tracks, but the tracks 
+    // arrive asynchronously and our dummy audio is attached dynamically. 
+    // Autoplay policy usually allows play() if the document has received a user gesture (like the join button click).
 
     const s = io(getSocketUrl());
     socket.value = s;
@@ -231,12 +210,15 @@ export function useVoiceRoom() {
 
     s.on("participant-left", ({ id: remoteId }: { id: string }) => {
       const p = participants.value.get(remoteId);
-      p?.audioElement?.remove(); // cleanup dummy audio element
+      if (p?.audioElement) {
+        p.audioElement.pause();
+        p.audioElement.srcObject = null;
+        p.audioElement.remove(); // Remove from DOM
+      }
       peerConnections.value.get(remoteId)?.close();
       peerConnections.value.delete(remoteId);
       iceCandidateQueues.value.delete(remoteId);
       iceCandidateQueues.value = new Map(iceCandidateQueues.value);
-      gainNodes.value.delete(remoteId);
       participants.value.delete(remoteId);
       participants.value = new Map(participants.value);
       delete peerVolumes.value[remoteId];
@@ -318,14 +300,17 @@ export function useVoiceRoom() {
     socket.value = null;
     myStream.value?.getTracks().forEach((t) => t.stop());
     myStream.value = null;
-    participants.value.forEach((p) => p.audioElement?.remove());
+    participants.value.forEach((p) => {
+      if (p.audioElement) {
+        p.audioElement.pause();
+        p.audioElement.srcObject = null;
+        p.audioElement.remove();
+      }
+    });
     peerConnections.value.forEach((pc) => pc.close());
     peerConnections.value.clear();
     iceCandidateQueues.value.clear();
     iceCandidateQueues.value = new Map();
-    gainNodes.value.clear();
-    audioContext.value?.close();
-    audioContext.value = null;
     participants.value.clear();
     myId.value = null;
     isConnected.value = false;
@@ -359,6 +344,6 @@ export function useVoiceRoom() {
     join,
     leave,
     toggleMute,
-    resumeAudioContextIfNeeded,
+    resumeAudioContextIfNeeded: () => {}, // empty function for backward compatibility with UI
   };
 }
