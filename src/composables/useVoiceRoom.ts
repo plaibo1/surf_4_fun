@@ -1,229 +1,347 @@
-import { ref, computed, onUnmounted } from 'vue'
-import { io } from 'socket.io-client'
+import { ref, computed, onUnmounted } from "vue";
+import { io } from "socket.io-client";
 
 function getSocketUrl(): string {
   // В dev используем тот же origin — Vite проксирует /socket.io на бэкенд (избегаем SSL на порту 8000)
-  if (import.meta.env.DEV) return window.location.origin
-  return window.location.origin
+  if (import.meta.env.DEV) return window.location.origin;
+  return window.location.origin;
 }
 
 export interface Participant {
-  id: string
-  userName: string
-  stream?: MediaStream
-  volume: number
-  muted?: boolean
+  id: string;
+  userName: string;
+  stream?: MediaStream;
+  volume: number;
+  muted?: boolean;
+  /** Dummy audio element so browser allows playback from MediaStream (autoplay policy) */
+  audioElement?: HTMLAudioElement;
 }
 
 export function useVoiceRoom() {
-  const socket = ref<ReturnType<typeof io> | null>(null)
-  const myId = ref<string | null>(null)
-  const myStream = ref<MediaStream | null>(null)
-  const participants = ref<Map<string, Participant>>(new Map())
-  const roomId = ref('')
-  const userName = ref('')
-  const isMuted = ref(false)
-  const isConnected = ref(false)
-  const roomFull = ref(false)
-  const error = ref<string | null>(null)
+  const socket = ref<ReturnType<typeof io> | null>(null);
+  const myId = ref<string | null>(null);
+  const myStream = ref<MediaStream | null>(null);
+  const participants = ref<Map<string, Participant>>(new Map());
+  const roomId = ref("");
+  const userName = ref("");
+  const isMuted = ref(false);
+  const isConnected = ref(false);
+  const roomFull = ref(false);
+  const error = ref<string | null>(null);
 
   const participantList = computed(() =>
     Array.from(participants.value.values()).map((p) => ({
       ...p,
       volume: getVolume(p.id),
-    }))
-  )
+    })),
+  );
 
-  const peerVolumes = ref<Record<string, number>>({})
+  const peerVolumes = ref<Record<string, number>>({});
 
   function getVolume(peerId: string): number {
-    return peerVolumes.value[peerId] ?? 100
+    return peerVolumes.value[peerId] ?? 100;
   }
 
   function setVolume(peerId: string, value: number) {
-    peerVolumes.value = { ...peerVolumes.value, [peerId]: value }
-    const p = participants.value.get(peerId)
-    if (p?.stream) setRemoteStreamVolume(peerId, p.stream, value)
+    peerVolumes.value = { ...peerVolumes.value, [peerId]: value };
+    const p = participants.value.get(peerId);
+    if (p?.stream) setRemoteStreamVolume(peerId, p.stream, value);
   }
 
-  const peerConnections = ref<Map<string, RTCPeerConnection>>(new Map())
-  const audioContext = ref<AudioContext | null>(null)
-  const gainNodes = ref<Map<string, GainNode>>(new Map())
+  const peerConnections = ref<Map<string, RTCPeerConnection>>(new Map());
+  /** ICE candidates received before remoteDescription is set — drain after setRemoteDescription */
+  const iceCandidateQueues = ref<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const audioContext = ref<AudioContext | null>(null);
+  const gainNodes = ref<Map<string, GainNode>>(new Map());
 
   async function getLocalStream(): Promise<MediaStream> {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-    myStream.value = stream
-    return stream
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: false,
+    });
+    myStream.value = stream;
+    return stream;
   }
 
   function ensureAudioContext(): AudioContext {
     if (!audioContext.value) {
-      audioContext.value = new AudioContext()
+      audioContext.value = new AudioContext();
     }
-    return audioContext.value
+    return audioContext.value;
   }
 
   async function resumeAudioContextIfNeeded() {
-    const ctx = audioContext.value
-    if (ctx?.state === 'suspended') {
-      await ctx.resume()
+    const ctx = audioContext.value;
+    if (ctx?.state === "suspended") {
+      await ctx.resume();
     }
   }
 
-  function setRemoteStreamVolume(peerId: string, stream: MediaStream, volume: number) {
-    const ctx = ensureAudioContext()
-    let gain = gainNodes.value.get(peerId)
+  /** Drain queued ICE candidates for a peer after setRemoteDescription. */
+  async function drainIceQueue(peerId: string, pc: RTCPeerConnection) {
+    const queue = iceCandidateQueues.value.get(peerId);
+    if (!queue?.length) return;
+    console.log("[WebRTC] Draining ICE queue for", peerId, "candidates:", queue.length);
+    for (const c of queue) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(c));
+        console.log("[WebRTC] addIceCandidate (from queue) ok for", peerId);
+      } catch (err) {
+        console.warn("[WebRTC] addIceCandidate (from queue) failed for", peerId, err);
+      }
+    }
+    iceCandidateQueues.value.delete(peerId);
+    iceCandidateQueues.value = new Map(iceCandidateQueues.value);
+  }
+
+  function setRemoteStreamVolume(
+    peerId: string,
+    stream: MediaStream,
+    volume: number,
+  ) {
+    const ctx = ensureAudioContext();
+    let gain = gainNodes.value.get(peerId);
     if (!gain) {
-      const source = ctx.createMediaStreamSource(stream)
-      gain = ctx.createGain()
-      source.connect(gain)
-      gain.connect(ctx.destination)
-      gainNodes.value.set(peerId, gain)
-      resumeAudioContextIfNeeded()
+      const source = ctx.createMediaStreamSource(stream);
+      gain = ctx.createGain();
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      gainNodes.value.set(peerId, gain);
+      resumeAudioContextIfNeeded();
     }
-    gain.gain.value = volume / 100
+    gain.gain.value = volume / 100;
   }
 
-  function createPeerConnection(remoteId: string, remoteName: string, isInitiator: boolean) {
-    if (peerConnections.value.has(remoteId)) return peerConnections.value.get(remoteId)!
+  function createPeerConnection(remoteId: string, remoteName: string) {
+    if (peerConnections.value.has(remoteId))
+      return peerConnections.value.get(remoteId)!;
     const pc = new RTCPeerConnection({
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
       ],
-    })
-    peerConnections.value.set(remoteId, pc)
+    });
+    peerConnections.value.set(remoteId, pc);
 
     const participant: Participant = {
       id: remoteId,
       userName: remoteName,
       volume: getVolume(remoteId),
-    }
-    participants.value.set(remoteId, participant)
-    participants.value = new Map(participants.value)
+    };
+    participants.value.set(remoteId, participant);
+    participants.value = new Map(participants.value);
 
     pc.ontrack = (e) => {
-      const stream = e.streams?.[0] ?? new MediaStream([e.track])
-      if (!stream.getAudioTracks().length && !stream.getVideoTracks().length) return
-      participant.stream = stream
-      const vol = getVolume(remoteId)
-      setRemoteStreamVolume(remoteId, stream, vol)
-      participants.value = new Map(participants.value)
-    }
+      console.log("[WebRTC] ontrack from", remoteId, "kind:", e.track.kind, "streamId:", e.streams?.[0]?.id);
+      const stream = e.streams?.[0] ?? new MediaStream([e.track]);
+      if (!stream.getAudioTracks().length && !stream.getVideoTracks().length)
+        return;
+      participant.stream = stream;
+      // Dummy <audio> element: browsers (especially mobile/Chrome) require a media element to "activate" stream playback
+      const audioEl = new Audio();
+      audioEl.srcObject = stream;
+      audioEl.muted = true; // we route sound via GainNode to ctx.destination
+      audioEl.play().catch((err) => console.warn("[WebRTC] dummy audio play failed for", remoteId, err));
+      participant.audioElement = audioEl;
+      resumeAudioContextIfNeeded();
+      const vol = getVolume(remoteId);
+      setRemoteStreamVolume(remoteId, stream, vol);
+      participants.value = new Map(participants.value);
+    };
 
     pc.onicecandidate = (e) => {
-      if (e.candidate && socket.value)
-        socket.value.emit('ice-candidate', { to: remoteId, candidate: e.candidate })
+      if (e.candidate && socket.value) {
+        console.log("[WebRTC] onicecandidate -> send to", remoteId);
+        socket.value.emit("ice-candidate", {
+          to: remoteId,
+          candidate: e.candidate,
+        });
+      }
+    };
+
+    // Add our tracks for both initiator and responder so both sides send audio
+    if (myStream.value) {
+      myStream.value
+        .getTracks()
+        .forEach((track) => pc.addTrack(track, myStream.value!));
     }
 
-    if (myStream.value && isInitiator) {
-      myStream.value.getTracks().forEach((track) => pc.addTrack(track, myStream.value!))
-    }
-
-    return pc
+    return pc;
   }
 
   async function join(rId: string, uName: string) {
-    roomId.value = rId
-    userName.value = uName
-    roomFull.value = false
-    error.value = null
+    roomId.value = rId;
+    userName.value = uName;
+    roomFull.value = false;
+    error.value = null;
     try {
-      await getLocalStream()
+      await getLocalStream();
     } catch (e) {
-      error.value = 'Нет доступа к микрофону'
-      return
+      error.value = "Нет доступа к микрофону";
+      return;
     }
 
     // На мобильных AudioContext по умолчанию suspended — разблокируем по жесту (мы только что нажали «Войти»)
-    ensureAudioContext()
-    await resumeAudioContextIfNeeded()
+    ensureAudioContext();
+    await resumeAudioContextIfNeeded();
 
-    const s = io(getSocketUrl())
-    socket.value = s
+    const s = io(getSocketUrl());
+    socket.value = s;
 
-    s.on('joined', async ({ yourId, participants: list }: { yourId: string; participants: { id: string; userName: string }[] }) => {
-      myId.value = yourId
-      isConnected.value = true
-      for (const p of list) {
-        peerVolumes.value[p.id] = 100
-        const pc = createPeerConnection(p.id, p.userName, true)
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        s.emit('offer', { to: p.id, offer })
-      }
-    })
+    s.on(
+      "joined",
+      async ({
+        yourId,
+        participants: list,
+      }: {
+        yourId: string;
+        participants: { id: string; userName: string }[];
+      }) => {
+        myId.value = yourId;
+        isConnected.value = true;
+        for (const p of list) {
+          peerVolumes.value[p.id] = 100;
+          const pc = createPeerConnection(p.id, p.userName);
+          console.log("[WebRTC] createOffer for", p.id);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          s.emit("offer", { to: p.id, offer });
+        }
+      },
+    );
 
-    s.on('room-full', () => {
-      roomFull.value = true
-      leave()
-    })
+    s.on("room-full", () => {
+      roomFull.value = true;
+      leave();
+    });
 
-    s.on('participant-joined', async ({ id: remoteId, userName: remoteName }: { id: string; userName: string }) => {
-      peerVolumes.value[remoteId] = 100
-      createPeerConnection(remoteId, remoteName, false)
-    })
+    s.on(
+      "participant-joined",
+      async ({
+        id: remoteId,
+        userName: remoteName,
+      }: {
+        id: string;
+        userName: string;
+      }) => {
+        peerVolumes.value[remoteId] = 100;
+        createPeerConnection(remoteId, remoteName);
+      },
+    );
 
-    s.on('participant-left', ({ id: remoteId }: { id: string }) => {
-      peerConnections.value.get(remoteId)?.close()
-      peerConnections.value.delete(remoteId)
-      gainNodes.value.delete(remoteId)
-      participants.value.delete(remoteId)
-      participants.value = new Map(participants.value)
-      delete peerVolumes.value[remoteId]
-    })
+    s.on("participant-left", ({ id: remoteId }: { id: string }) => {
+      const p = participants.value.get(remoteId);
+      p?.audioElement?.remove(); // cleanup dummy audio element
+      peerConnections.value.get(remoteId)?.close();
+      peerConnections.value.delete(remoteId);
+      iceCandidateQueues.value.delete(remoteId);
+      iceCandidateQueues.value = new Map(iceCandidateQueues.value);
+      gainNodes.value.delete(remoteId);
+      participants.value.delete(remoteId);
+      participants.value = new Map(participants.value);
+      delete peerVolumes.value[remoteId];
+    });
 
-    s.on('offer', async ({ from: remoteId, userName: remoteName, offer }: { from: string; userName: string; offer: RTCSessionDescriptionInit }) => {
-      const pc = createPeerConnection(remoteId, remoteName, false)
-      await pc.setRemoteDescription(new RTCSessionDescription(offer))
-      // Ответчик тоже должен отправить свой микрофон, иначе инициатор его не услышит
-      if (myStream.value) {
-        myStream.value.getTracks().forEach((track) => pc.addTrack(track, myStream.value!))
-      }
-      const answer = await pc.createAnswer()
-      await pc.setLocalDescription(answer)
-      s.emit('answer', { to: remoteId, answer })
-    })
+    s.on(
+      "offer",
+      async ({
+        from: remoteId,
+        userName: remoteName,
+        offer,
+      }: {
+        from: string;
+        userName: string;
+        offer: RTCSessionDescriptionInit;
+      }) => {
+        const pc = createPeerConnection(remoteId, remoteName);
+        console.log("[WebRTC] setRemoteDescription(offer) for", remoteId);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        await drainIceQueue(remoteId, pc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        s.emit("answer", { to: remoteId, answer });
+      },
+    );
 
-    s.on('answer', async ({ from: remoteId, answer }: { from: string; answer: RTCSessionDescriptionInit }) => {
-      const pc = peerConnections.value.get(remoteId)
-      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer))
-    })
+    s.on(
+      "answer",
+      async ({
+        from: remoteId,
+        answer,
+      }: {
+        from: string;
+        answer: RTCSessionDescriptionInit;
+      }) => {
+        const pc = peerConnections.value.get(remoteId);
+        if (pc) {
+          console.log("[WebRTC] setRemoteDescription(answer) for", remoteId);
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+          await drainIceQueue(remoteId, pc);
+        }
+      },
+    );
 
-    s.on('ice-candidate', async ({ from: remoteId, candidate }: { from: string; candidate: RTCIceCandidateInit }) => {
-      const pc = peerConnections.value.get(remoteId)
-      if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate))
-    })
+    s.on(
+      "ice-candidate",
+      async ({
+        from: remoteId,
+        candidate,
+      }: {
+        from: string;
+        candidate: RTCIceCandidateInit;
+      }) => {
+        if (!candidate) return;
+        const pc = peerConnections.value.get(remoteId);
+        if (!pc) return;
+        if (!pc.remoteDescription) {
+          const queue = iceCandidateQueues.value.get(remoteId) ?? [];
+          queue.push(candidate);
+          iceCandidateQueues.value.set(remoteId, queue);
+          iceCandidateQueues.value = new Map(iceCandidateQueues.value);
+          console.log("[WebRTC] ICE candidate queued for", remoteId, "queue size:", queue.length);
+          return;
+        }
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log("[WebRTC] addIceCandidate ok for", remoteId);
+        } catch (err) {
+          console.warn("[WebRTC] addIceCandidate failed for", remoteId, err);
+        }
+      },
+    );
 
-    s.emit('join-room', { roomId: rId, userName: uName })
+    s.emit("join-room", { roomId: rId, userName: uName });
   }
 
   function leave() {
-    socket.value?.disconnect()
-    socket.value = null
-    myStream.value?.getTracks().forEach((t) => t.stop())
-    myStream.value = null
-    peerConnections.value.forEach((pc) => pc.close())
-    peerConnections.value.clear()
-    gainNodes.value.clear()
-    audioContext.value?.close()
-    audioContext.value = null
-    participants.value.clear()
-    myId.value = null
-    isConnected.value = false
-    roomId.value = ''
-    userName.value = ''
-    peerVolumes.value = {}
+    socket.value?.disconnect();
+    socket.value = null;
+    myStream.value?.getTracks().forEach((t) => t.stop());
+    myStream.value = null;
+    participants.value.forEach((p) => p.audioElement?.remove());
+    peerConnections.value.forEach((pc) => pc.close());
+    peerConnections.value.clear();
+    iceCandidateQueues.value.clear();
+    iceCandidateQueues.value = new Map();
+    gainNodes.value.clear();
+    audioContext.value?.close();
+    audioContext.value = null;
+    participants.value.clear();
+    myId.value = null;
+    isConnected.value = false;
+    roomId.value = "";
+    userName.value = "";
+    peerVolumes.value = {};
   }
 
   function toggleMute() {
-    isMuted.value = !isMuted.value
+    isMuted.value = !isMuted.value;
     myStream.value?.getAudioTracks().forEach((t) => {
-      t.enabled = !isMuted.value
-    })
+      t.enabled = !isMuted.value;
+    });
   }
 
-  onUnmounted(leave)
+  onUnmounted(leave);
 
   return {
     myId,
@@ -242,5 +360,5 @@ export function useVoiceRoom() {
     leave,
     toggleMute,
     resumeAudioContextIfNeeded,
-  }
+  };
 }
