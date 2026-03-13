@@ -24,6 +24,8 @@ const io = new Server(httpServer, {
 })
 
 const rooms = new Map()
+// Keep track of the highest volume record for each room
+const roomVolumeKings = new Map()
 
 io.on('connection', (socket) => {
   socket.on('join-room', async ({ roomId, userName }) => {
@@ -43,8 +45,14 @@ io.on('connection', (socket) => {
       .filter((s) => s.id !== socket.id)
       .map((s) => ({ id: s.id, userName: s.userName }))
 
-    socket.emit('joined', { yourId: socket.id, participants })
+    const currentKing = roomVolumeKings.get(roomId)
+    socket.emit('joined', { yourId: socket.id, participants, volumeKing: currentKing })
     socket.to(roomId).emit('participant-joined', { id: socket.id, userName: socket.userName })
+  })
+
+  socket.on('new-volume-king', ({ roomId, volumeKing }) => {
+    roomVolumeKings.set(roomId, volumeKing)
+    socket.to(roomId).emit('volume-king-updated', volumeKing)
   })
 
   socket.on('offer', ({ to, offer }) => {
@@ -66,8 +74,18 @@ io.on('connection', (socket) => {
       const room = rooms.get(roomId)
       if (room) {
         room.delete(socket.id)
-        if (room.size === 0) rooms.delete(roomId)
-        else rooms.set(roomId, room)
+        if (room.size === 0) {
+          rooms.delete(roomId)
+          roomVolumeKings.delete(roomId)
+        } else {
+          rooms.set(roomId, room)
+          // If the king leaves, we reset the king for the room
+          const king = roomVolumeKings.get(roomId)
+          if (king && king.id === socket.id) {
+            roomVolumeKings.delete(roomId)
+            io.to(roomId).emit('volume-king-updated', null)
+          }
+        }
       }
     }
   })

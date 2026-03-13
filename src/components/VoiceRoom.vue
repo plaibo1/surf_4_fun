@@ -33,6 +33,7 @@ const {
   resumeAudioContextIfNeeded,
   isLocalSpeaking,
   localAudioLevel,
+  volumeKing,
 } = useVoiceRoom()
 
 watch(
@@ -86,6 +87,27 @@ const vStream = {
             «Включить звук»
           </Button>
         </p>
+
+        <!-- Король громкости -->
+        <div v-if="volumeKing" class="mt-4 p-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 flex items-center justify-between shadow-sm shadow-yellow-500/10">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-10 h-10 rounded-full bg-yellow-500/20 text-yellow-600 flex items-center justify-center text-lg font-bold">
+                {{ volumeKing.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="absolute -top-3 -right-2 text-xl drop-shadow-md transform rotate-12">
+                👑
+              </div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-yellow-600 dark:text-yellow-500">Король громкости</p>
+              <p class="text-sm font-medium">{{ volumeKing.name }}</p>
+            </div>
+          </div>
+          <div class="text-xs text-muted-foreground text-right hidden sm:block">
+            Рекорд: {{ Math.round(volumeKing.maxVolume + 100) }} / 100
+          </div>
+        </div>
       </CardContent>
     </Card>
 

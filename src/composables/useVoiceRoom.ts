@@ -31,6 +31,10 @@ export function useVoiceRoom() {
   const roomFull = ref(false);
   const error = ref<string | null>(null);
 
+  // Volume King tracking
+  const volumeKing = ref<{ id: string; name: string; maxVolume: number } | null>(null);
+  const VOLUME_KING_THRESHOLD = -20; // dB threshold for considering someone a "Volume King" (loud speaking/shouting)
+
   // Hark integration
   const speakingMap = ref<Record<string, boolean>>({});
   const audioLevelMap = ref<Record<string, number>>({});
@@ -61,6 +65,20 @@ export function useVoiceRoom() {
       // Map volume from roughly -70dB (quiet) to -10dB (loud) to a 0-1 scale
       const level = Math.max(0, Math.min(1, (currentVolume + 70) / 60));
       audioLevelMap.value = { ...audioLevelMap.value, [streamId]: level };
+
+      // Volume King Logic - only consider if they are louder than threshold AND louder than current record
+      if (currentVolume > VOLUME_KING_THRESHOLD) {
+        if (!volumeKing.value || currentVolume > volumeKing.value.maxVolume) {
+          const isMe = streamId === myId.value;
+          const uname = isMe ? userName.value : participants.value.get(streamId)?.userName;
+          if (uname) {
+             const newKing = { id: streamId, name: uname, maxVolume: currentVolume };
+             volumeKing.value = newKing;
+             // Broadcast the new king to the room
+             socket.value?.emit('new-volume-king', { roomId: roomId.value, volumeKing: newKing });
+          }
+        }
+      }
     });
 
     speechEventsMap.set(streamId, speechEvents);
@@ -253,12 +271,17 @@ export function useVoiceRoom() {
       async ({
         yourId,
         participants: list,
+        volumeKing: roomKing,
       }: {
         yourId: string;
         participants: { id: string; userName: string }[];
+        volumeKing?: { id: string; name: string; maxVolume: number } | null;
       }) => {
         myId.value = yourId;
         isConnected.value = true;
+        if (roomKing) {
+          volumeKing.value = roomKing;
+        }
         if (myStream.value) {
           trackSpeaking(yourId, myStream.value);
         }
@@ -291,6 +314,10 @@ export function useVoiceRoom() {
         createPeerConnection(remoteId, remoteName);
       },
     );
+
+    s.on("volume-king-updated", (newKing: { id: string; name: string; maxVolume: number } | null) => {
+      volumeKing.value = newKing;
+    });
 
     s.on("participant-left", ({ id: remoteId }: { id: string }) => {
       const p = participants.value.get(remoteId);
@@ -457,6 +484,7 @@ export function useVoiceRoom() {
     peerVolumes,
     isLocalSpeaking,
     localAudioLevel,
+    volumeKing,
     getVolume,
     setVolume,
     roomId,
