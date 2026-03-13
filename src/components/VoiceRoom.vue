@@ -22,6 +22,7 @@ const {
   setVolume,
   isMuted,
   isVideoEnabled,
+  isScreenSharing,
   isConnected,
   roomFull,
   error,
@@ -29,6 +30,7 @@ const {
   leave,
   toggleMute,
   toggleVideo,
+  toggleScreenShare,
   myStream,
   isLocalSpeaking,
   localAudioLevel,
@@ -59,10 +61,23 @@ const vStream = {
     if (binding.value) el.srcObject = binding.value
   },
   updated(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
-    if (el.srcObject !== binding.value) {
-      el.srcObject = binding.value ?? null
+    const currentStream = el.srcObject as MediaStream | null;
+    const newStream = binding.value as MediaStream | null;
+    if (!currentStream && !newStream) return;
+    if (!currentStream || !newStream) {
+      el.srcObject = newStream ?? null;
+      return;
+    }
+    const currentTracks = currentStream.getTracks();
+    const newTracks = newStream.getTracks();
+    if (currentTracks.length !== newTracks.length || currentTracks.some((t, i) => t !== newTracks[i])) {
+       el.srcObject = newStream;
     }
   }
+}
+
+function createStream(track: MediaStreamTrack) {
+  return new MediaStream([track])
 }
 </script>
 
@@ -72,6 +87,9 @@ const vStream = {
       <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Комната: {{ roomId }}</CardTitle>
         <div class="flex flex-wrap gap-2">
+          <Button :variant="isScreenSharing ? 'secondary' : 'outline'" @click="toggleScreenShare">
+            {{ isScreenSharing ? 'Остановить показ' : 'Показать экран' }}
+          </Button>
           <Button :variant="isVideoEnabled ? 'secondary' : 'outline'" @click="toggleVideo">
             {{ isVideoEnabled ? 'Выключить камеру' : 'Включить камеру' }}
           </Button>
@@ -147,22 +165,26 @@ const vStream = {
       </CardContent>
     </Card>
 
-    <Card v-if="isVideoEnabled || participants.some(p => p.stream && p.stream.getVideoTracks().length)">
+    <Card v-if="myStream?.getVideoTracks()?.length || participants.some(p => p.stream && p.stream.getVideoTracks().length)">
       <CardHeader>
         <CardTitle>Видеочат</CardTitle>
       </CardHeader>
       <CardContent class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Я -->
-        <div v-if="isVideoEnabled && myStream" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
-          <video v-stream="myStream" autoplay playsinline muted class="w-full h-full object-cover"></video>
-          <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ userName }} (Вы)</div>
-        </div>
+        <template v-if="myStream">
+          <div v-for="track in myStream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
+            <video v-stream="createStream(track)" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ userName }} (Вы)</div>
+          </div>
+        </template>
         <!-- Другие -->
         <template v-for="p in participants" :key="p.id">
-          <div v-if="p.stream && p.stream.getVideoTracks().length" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
-            <video v-stream="p.stream" autoplay playsinline class="w-full h-full object-cover"></video>
-            <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ p.userName }}</div>
-          </div>
+          <template v-if="p.stream">
+            <div v-for="track in p.stream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
+              <video v-stream="createStream(track)" autoplay playsinline class="w-full h-full object-cover"></video>
+              <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ p.userName }}</div>
+            </div>
+          </template>
         </template>
       </CardContent>
     </Card>

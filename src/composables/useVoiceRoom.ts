@@ -27,6 +27,9 @@ export function useVoiceRoom() {
   const userName = ref("");
   const isMuted = ref(false);
   const isVideoEnabled = ref(false);
+  const isScreenSharing = ref(false);
+  const cameraTrack = ref<MediaStreamTrack | null>(null);
+  const screenTrack = ref<MediaStreamTrack | null>(null);
   const isNoiseSuppressionEnabled = ref(false); // По умолчанию выключено
   const isConnected = ref(false);
   const roomFull = ref(false);
@@ -209,9 +212,10 @@ export function useVoiceRoom() {
       }
       if (!stream.getTracks().includes(e.track)) {
         stream.addTrack(e.track);
+        participant.stream = new MediaStream(stream.getTracks());
       }
       
-      trackSpeaking(remoteId, stream);
+      trackSpeaking(remoteId, participant.stream!);
       
       if (e.track.kind === 'audio' && !participant.audioElement) {
         const audioEl = new Audio();
@@ -423,6 +427,10 @@ export function useVoiceRoom() {
     socket.value = null;
     myStream.value?.getTracks().forEach((t) => t.stop());
     myStream.value = null;
+    cameraTrack.value?.stop();
+    cameraTrack.value = null;
+    screenTrack.value?.stop();
+    screenTrack.value = null;
     participants.value.forEach((p) => {
       if (p.audioElement) {
         p.audioElement.pause();
@@ -439,6 +447,7 @@ export function useVoiceRoom() {
     myId.value = null;
     isConnected.value = false;
     isVideoEnabled.value = false;
+    isScreenSharing.value = false;
     roomId.value = "";
     userName.value = "";
     peerVolumes.value = {};
@@ -452,29 +461,33 @@ export function useVoiceRoom() {
   }
 
   async function toggleVideo() {
-    if (isVideoEnabled.value) {
+    if (isVideoEnabled.value && cameraTrack.value) {
       isVideoEnabled.value = false;
-      const videoTrack = myStream.value?.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.stop();
-        myStream.value?.removeTrack(videoTrack);
-        for (const [remoteId, pc] of peerConnections.value) {
-          const sender = pc.getSenders().find(s => s.track === videoTrack);
-          if (sender) pc.removeTrack(sender);
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          socket.value?.emit("offer", { to: remoteId, offer });
-        }
+      cameraTrack.value.stop();
+      if (myStream.value) {
+        myStream.value.removeTrack(cameraTrack.value);
+        myStream.value = new MediaStream(myStream.value.getTracks());
       }
+      for (const [remoteId, pc] of peerConnections.value) {
+        const sender = pc.getSenders().find(s => s.track === cameraTrack.value);
+        if (sender) pc.removeTrack(sender);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.value?.emit("offer", { to: remoteId, offer });
+      }
+      cameraTrack.value = null;
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const videoTrack = stream.getVideoTracks()[0];
-        if (!videoTrack) throw new Error("No video track");
+        const track = stream.getVideoTracks()[0];
+        if (!track) throw new Error("No video track");
         isVideoEnabled.value = true;
-        myStream.value?.addTrack(videoTrack);
+        cameraTrack.value = track;
+        if (!myStream.value) myStream.value = new MediaStream();
+        myStream.value.addTrack(track);
+        myStream.value = new MediaStream(myStream.value.getTracks());
         for (const [remoteId, pc] of peerConnections.value) {
-          pc.addTrack(videoTrack, myStream.value!);
+          pc.addTrack(track, myStream.value);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           socket.value?.emit("offer", { to: remoteId, offer });
@@ -482,6 +495,59 @@ export function useVoiceRoom() {
       } catch (err) {
         console.error("[WebRTC] Failed to get video track", err);
         error.value = "Нет доступа к камере";
+      }
+    }
+  }
+
+  async function toggleScreenShare() {
+    if (isScreenSharing.value && screenTrack.value) {
+      isScreenSharing.value = false;
+      screenTrack.value.stop();
+      if (myStream.value) {
+        myStream.value.removeTrack(screenTrack.value);
+        myStream.value = new MediaStream(myStream.value.getTracks());
+      }
+      for (const [remoteId, pc] of peerConnections.value) {
+        const sender = pc.getSenders().find(s => s.track === screenTrack.value);
+        if (sender) pc.removeTrack(sender);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.value?.emit("offer", { to: remoteId, offer });
+      }
+      screenTrack.value = null;
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const track = stream.getVideoTracks()[0];
+        if (!track) throw new Error("No screen track");
+        
+        isScreenSharing.value = true;
+        screenTrack.value = track;
+        
+        // Handle native browser "Stop sharing" button
+        track.onended = () => {
+          if (isScreenSharing.value) {
+            toggleScreenShare();
+          }
+        };
+
+        if (!myStream.value) {
+          myStream.value = new MediaStream();
+        }
+        myStream.value.addTrack(track);
+        myStream.value = new MediaStream(myStream.value.getTracks());
+        
+        for (const [remoteId, pc] of peerConnections.value) {
+          pc.addTrack(track, myStream.value);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.value?.emit("offer", { to: remoteId, offer });
+        }
+      } catch (err) {
+        console.error("[WebRTC] Failed to get screen share", err);
+        if (!isScreenSharing.value) {
+          // Ignore cancellation errors
+        }
       }
     }
   }
@@ -518,6 +584,7 @@ export function useVoiceRoom() {
     userName,
     isMuted,
     isVideoEnabled,
+    isScreenSharing,
     isNoiseSuppressionEnabled,
     isConnected,
     roomFull,
@@ -526,6 +593,7 @@ export function useVoiceRoom() {
     leave,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
     toggleNoiseSuppression,
   };
 }
