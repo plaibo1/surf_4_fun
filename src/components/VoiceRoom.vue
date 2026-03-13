@@ -169,7 +169,7 @@ const vStream = {
 
     <Card>
       <CardHeader>
-        <CardTitle>Участники — громкость</CardTitle>
+        <CardTitle>Участники</CardTitle>
         <p class="text-sm text-muted-foreground">
           Регулируйте громкость каждого участника отдельно (0–100%).
         </p>
