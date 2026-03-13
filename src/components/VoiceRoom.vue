@@ -31,6 +31,8 @@ const {
   toggleVideo,
   myStream,
   resumeAudioContextIfNeeded,
+  isLocalSpeaking,
+  localAudioLevel,
 } = useVoiceRoom()
 
 watch(
@@ -69,9 +71,6 @@ const vStream = {
           <Button :variant="isVideoEnabled ? 'secondary' : 'outline'" @click="toggleVideo">
             {{ isVideoEnabled ? 'Выключить камеру' : 'Включить камеру' }}
           </Button>
-          <Button :variant="isMuted ? 'destructive' : 'secondary'" @click="toggleMute">
-            {{ isMuted ? 'Включить микрофон' : 'Выключить микрофон' }}
-          </Button>
           <Button variant="outline" @click="onLeave">Выйти</Button>
         </div>
       </CardHeader>
@@ -90,6 +89,39 @@ const vStream = {
       </CardContent>
     </Card>
 
+    <!-- Моя карточка (панель участника) -->
+    <Card class="border-primary/20 bg-muted/20">
+      <CardContent class="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-4 w-full">
+          <div 
+            class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0 transition-transform duration-75"
+            :class="isLocalSpeaking ? 'bg-primary/10 text-primary ring-2 ring-green-500 ring-offset-2 ring-offset-background' : 'bg-primary/10 text-primary'"
+            :style="{ transform: `scale(${1 + localAudioLevel * 0.2})` }"
+          >
+            {{ userName.charAt(0).toUpperCase() }}
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-lg leading-none flex items-center gap-2">
+              {{ userName }}
+              <span class="text-xs font-normal text-muted-foreground bg-background px-2 py-0.5 rounded-full border">Вы</span>
+            </h3>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="relative flex h-2.5 w-2.5">
+                <span :class="isMuted ? 'bg-destructive/50' : 'bg-green-500'" class="absolute inline-flex h-full w-full rounded-full opacity-75"></span>
+                <span :class="isMuted ? 'bg-destructive' : 'bg-green-500'" class="relative inline-flex rounded-full h-2.5 w-2.5"></span>
+              </span>
+              <span class="text-sm text-muted-foreground">
+                {{ isMuted ? 'Микрофон выключен' : 'Вас слышно' }}
+              </span>
+            </div>
+          </div>
+          <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" class="shrink-0 w-full sm:w-auto">
+            {{ isMuted ? 'Включить микрофон' : 'Выключить микрофон' }}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+
     <Card v-if="isVideoEnabled || participants.some(p => p.stream && p.stream.getVideoTracks().length)">
       <CardHeader>
         <CardTitle>Видеочат</CardTitle>
@@ -98,7 +130,7 @@ const vStream = {
         <!-- Я -->
         <div v-if="isVideoEnabled && myStream" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
           <video v-stream="myStream" autoplay playsinline muted class="w-full h-full object-cover"></video>
-          <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">Вы</div>
+          <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ userName }} (Вы)</div>
         </div>
         <!-- Другие -->
         <template v-for="p in participants" :key="p.id">
@@ -123,6 +155,13 @@ const vStream = {
           :key="p.id"
           class="flex items-center gap-4 rounded-lg border p-4"
         >
+          <div 
+            class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shrink-0 transition-transform duration-75"
+            :class="p.isSpeaking ? 'bg-secondary text-secondary-foreground ring-2 ring-green-500 ring-offset-2 ring-offset-background' : 'bg-secondary text-secondary-foreground'"
+            :style="{ transform: `scale(${1 + p.audioLevel * 0.2})` }"
+          >
+            {{ p.userName.charAt(0).toUpperCase() }}
+          </div>
           <div class="min-w-[120px]">
             <span class="font-medium">{{ p.userName }}</span>
             <span class="ml-2 text-xs text-muted-foreground">({{ p.id.slice(0, 8) }})</span>

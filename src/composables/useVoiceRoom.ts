@@ -1,5 +1,6 @@
 import { ref, computed, onUnmounted } from "vue";
 import { io } from "socket.io-client";
+import hark from "hark";
 
 function getSocketUrl(): string {
   // В dev используем тот же origin — Vite проксирует /socket.io на бэкенд (избегаем SSL на порту 8000)
@@ -30,12 +31,73 @@ export function useVoiceRoom() {
   const roomFull = ref(false);
   const error = ref<string | null>(null);
 
+  // Hark integration
+  const speakingMap = ref<Record<string, boolean>>({});
+  const audioLevelMap = ref<Record<string, number>>({});
+  const speechEventsMap = new Map<string, hark.Harker>();
+
+  function trackSpeaking(streamId: string, stream: MediaStream) {
+    if (!stream.getAudioTracks().length) return;
+
+    if (speechEventsMap.has(streamId)) {
+      speechEventsMap.get(streamId)?.stop();
+    }
+
+    const speechEvents = hark(stream, { 
+      threshold: -65, // Lower threshold to make it pick up sound easier
+      interval: 50 // faster checks
+    });
+    
+    speechEvents.on('speaking', () => {
+      speakingMap.value = { ...speakingMap.value, [streamId]: true };
+    });
+
+    speechEvents.on('stopped_speaking', () => {
+      speakingMap.value = { ...speakingMap.value, [streamId]: false };
+      audioLevelMap.value = { ...audioLevelMap.value, [streamId]: 0 };
+    });
+
+    speechEvents.on('volume_change', (currentVolume) => {
+      // Map volume from roughly -70dB (quiet) to -10dB (loud) to a 0-1 scale
+      const level = Math.max(0, Math.min(1, (currentVolume + 70) / 60));
+      audioLevelMap.value = { ...audioLevelMap.value, [streamId]: level };
+    });
+
+    speechEventsMap.set(streamId, speechEvents);
+    speakingMap.value = { ...speakingMap.value, [streamId]: false };
+    audioLevelMap.value = { ...audioLevelMap.value, [streamId]: 0 };
+  }
+
+  function stopTrackingSpeaking(streamId?: string) {
+    if (streamId) {
+      speechEventsMap.get(streamId)?.stop();
+      speechEventsMap.delete(streamId);
+      const newMap = { ...speakingMap.value };
+      delete newMap[streamId];
+      speakingMap.value = newMap;
+      
+      const newLevelMap = { ...audioLevelMap.value };
+      delete newLevelMap[streamId];
+      audioLevelMap.value = newLevelMap;
+    } else {
+      speechEventsMap.forEach(events => events.stop());
+      speechEventsMap.clear();
+      speakingMap.value = {};
+      audioLevelMap.value = {};
+    }
+  }
+
   const participantList = computed(() =>
     Array.from(participants.value.values()).map((p) => ({
       ...p,
       volume: getVolume(p.id),
+      isSpeaking: speakingMap.value[p.id] || false,
+      audioLevel: audioLevelMap.value[p.id] || 0,
     })),
   );
+
+  const isLocalSpeaking = computed(() => myId.value ? !!speakingMap.value[myId.value] : false);
+  const localAudioLevel = computed(() => myId.value ? (audioLevelMap.value[myId.value] || 0) : 0);
 
   const peerVolumes = ref<Record<string, number>>({});
 
@@ -60,6 +122,9 @@ export function useVoiceRoom() {
       video: false,
     });
     myStream.value = stream;
+    if (myId.value) {
+      trackSpeaking(myId.value, stream);
+    }
     return stream;
   }
 
@@ -116,6 +181,8 @@ export function useVoiceRoom() {
       if (!stream.getTracks().includes(e.track)) {
         stream.addTrack(e.track);
       }
+      
+      trackSpeaking(remoteId, stream);
       
       if (e.track.kind === 'audio' && !participant.audioElement) {
         const audioEl = new Audio();
@@ -192,6 +259,9 @@ export function useVoiceRoom() {
       }) => {
         myId.value = yourId;
         isConnected.value = true;
+        if (myStream.value) {
+          trackSpeaking(yourId, myStream.value);
+        }
         for (const p of list) {
           peerVolumes.value[p.id] = 100;
           const pc = createPeerConnection(p.id, p.userName);
@@ -236,6 +306,7 @@ export function useVoiceRoom() {
       participants.value.delete(remoteId);
       participants.value = new Map(participants.value);
       delete peerVolumes.value[remoteId];
+      stopTrackingSpeaking(remoteId);
     });
 
     s.on(
@@ -326,6 +397,7 @@ export function useVoiceRoom() {
     iceCandidateQueues.value.clear();
     iceCandidateQueues.value = new Map();
     participants.value.clear();
+    stopTrackingSpeaking();
     myId.value = null;
     isConnected.value = false;
     isVideoEnabled.value = false;
@@ -383,6 +455,8 @@ export function useVoiceRoom() {
     myStream,
     participants: participantList,
     peerVolumes,
+    isLocalSpeaking,
+    localAudioLevel,
     getVolume,
     setVolume,
     roomId,
