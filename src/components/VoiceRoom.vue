@@ -30,10 +30,12 @@ const {
   toggleMute,
   toggleVideo,
   myStream,
-  resumeAudioContextIfNeeded,
   isLocalSpeaking,
   localAudioLevel,
   volumeKing,
+
+  isNoiseSuppressionEnabled,
+  toggleNoiseSuppression,
 } = useVoiceRoom()
 
 watch(
@@ -51,6 +53,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
+import { Ear } from 'lucide-vue-next'
 const vStream = {
   mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
     if (binding.value) el.srcObject = binding.value
@@ -80,12 +83,6 @@ const vStream = {
         <p v-if="roomFull" class="text-destructive text-sm mb-2">В комнате уже 5 человек.</p>
         <p v-if="isConnected" class="text-muted-foreground text-sm">
           Участников: {{ participants.length + 1 }}
-        </p>
-        <p v-if="participants.length > 0" class="text-muted-foreground text-sm mt-2">
-          Нет звука на телефоне? Нажмите
-          <Button variant="link" size="sm" class="p-0 h-auto inline" @click="resumeAudioContextIfNeeded">
-            «Включить звук»
-          </Button>
         </p>
 
         <!-- Король громкости -->
@@ -137,6 +134,12 @@ const vStream = {
               </span>
             </div>
           </div>
+
+
+          <Button :variant="isNoiseSuppressionEnabled ? 'success' : 'outline'" @click="toggleNoiseSuppression">
+            <Ear />
+          </Button>
+
           <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" class="shrink-0 w-full sm:w-auto">
             {{ isMuted ? 'Включить микрофон' : 'Выключить микрофон' }}
           </Button>

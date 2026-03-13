@@ -47,11 +47,11 @@ function onSubmit() {
     <CardContent class="space-y-4">
       <div class="space-y-2">
         <label class="text-sm font-medium text-muted-foreground">Имя</label>
-        <Input v-model="userName" placeholder="Ваше имя" />
+        <Input v-model="userName" placeholder="Ваше имя" @keyup.enter="onSubmit" />
       </div>
       <div class="space-y-2">
         <label class="text-sm font-medium text-muted-foreground">ID комнаты</label>
-        <Input v-model="roomId" placeholder="Например: room-1" />
+        <Input v-model="roomId" placeholder="Например: room-1" @keyup.enter="onSubmit" />
       </div>
       <p class="text-xs text-muted-foreground">
         Одновременно в комнате может быть до 5 человек.

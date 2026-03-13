@@ -27,6 +27,7 @@ export function useVoiceRoom() {
   const userName = ref("");
   const isMuted = ref(false);
   const isVideoEnabled = ref(false);
+  const isNoiseSuppressionEnabled = ref(false); // По умолчанию выключено
   const isConnected = ref(false);
   const roomFull = ref(false);
   const error = ref<string | null>(null);
@@ -136,7 +137,11 @@ export function useVoiceRoom() {
 
   async function getLocalStream(): Promise<MediaStream> {
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
+      audio: {
+        noiseSuppression: isNoiseSuppressionEnabled.value, // Подавление фонового шума
+        echoCancellation: isNoiseSuppressionEnabled.value, // Подавление эха
+        autoGainControl: true,  // Автоматическое выравнивание громкости
+      },
       video: false,
     });
     myStream.value = stream;
@@ -475,6 +480,22 @@ export function useVoiceRoom() {
     }
   }
 
+  async function toggleNoiseSuppression() {
+    isNoiseSuppressionEnabled.value = !isNoiseSuppressionEnabled.value;
+    if (myStream.value) {
+      myStream.value.getAudioTracks().forEach(async (track) => {
+        try {
+          await track.applyConstraints({
+            noiseSuppression: isNoiseSuppressionEnabled.value,
+            echoCancellation: isNoiseSuppressionEnabled.value,
+          });
+        } catch (err) {
+          console.error("[WebRTC] Failed to apply noise suppression constraints", err);
+        }
+      });
+    }
+  }
+
   onUnmounted(leave);
 
   return {
@@ -491,6 +512,7 @@ export function useVoiceRoom() {
     userName,
     isMuted,
     isVideoEnabled,
+    isNoiseSuppressionEnabled,
     isConnected,
     roomFull,
     error,
@@ -498,6 +520,6 @@ export function useVoiceRoom() {
     leave,
     toggleMute,
     toggleVideo,
-    resumeAudioContextIfNeeded: () => {}, // empty function for backward compatibility with UI
+    toggleNoiseSuppression,
   };
 }
