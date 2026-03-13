@@ -25,6 +25,7 @@ export function useVoiceRoom() {
   const roomId = ref("");
   const userName = ref("");
   const isMuted = ref(false);
+  const isVideoEnabled = ref(false);
   const isConnected = ref(false);
   const roomFull = ref(false);
   const error = ref<string | null>(null);
@@ -107,21 +108,26 @@ export function useVoiceRoom() {
 
     pc.ontrack = (e) => {
       console.log("[WebRTC] ontrack from", remoteId, "kind:", e.track.kind, "streamId:", e.streams?.[0]?.id);
-      const stream = e.streams?.[0] ?? new MediaStream([e.track]);
-      if (!stream.getAudioTracks().length && !stream.getVideoTracks().length)
-        return;
-      participant.stream = stream;
-      // HTML <audio> element is standard for playing remote streams. Must set autoplay and playsInline.
-      // Do NOT set it to muted, otherwise standard volume control won't emit sound.
-      const audioEl = new Audio();
-      audioEl.autoplay = true;
-      audioEl.setAttribute("playsinline", "true");
-      audioEl.srcObject = stream;
-      audioEl.volume = getVolume(remoteId) / 100;
-      // Appending to body ensures it is not garbage collected and reliably plays on mobile
-      document.body.appendChild(audioEl);
-      audioEl.play().catch((err) => console.warn("[WebRTC] audio play failed for", remoteId, err));
-      participant.audioElement = audioEl;
+      let stream = participant.stream;
+      if (!stream) {
+        stream = e.streams?.[0] ?? new MediaStream();
+        participant.stream = stream;
+      }
+      if (!stream.getTracks().includes(e.track)) {
+        stream.addTrack(e.track);
+      }
+      
+      if (e.track.kind === 'audio' && !participant.audioElement) {
+        const audioEl = new Audio();
+        audioEl.autoplay = true;
+        audioEl.setAttribute("playsinline", "true");
+        audioEl.srcObject = stream;
+        audioEl.volume = getVolume(remoteId) / 100;
+        document.body.appendChild(audioEl);
+        audioEl.play().catch((err) => console.warn("[WebRTC] audio play failed for", remoteId, err));
+        participant.audioElement = audioEl;
+      }
+      
       participants.value = new Map(participants.value);
     };
 
@@ -322,6 +328,7 @@ export function useVoiceRoom() {
     participants.value.clear();
     myId.value = null;
     isConnected.value = false;
+    isVideoEnabled.value = false;
     roomId.value = "";
     userName.value = "";
     peerVolumes.value = {};
@@ -332,6 +339,41 @@ export function useVoiceRoom() {
     myStream.value?.getAudioTracks().forEach((t) => {
       t.enabled = !isMuted.value;
     });
+  }
+
+  async function toggleVideo() {
+    if (isVideoEnabled.value) {
+      isVideoEnabled.value = false;
+      const videoTrack = myStream.value?.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.stop();
+        myStream.value?.removeTrack(videoTrack);
+        for (const [remoteId, pc] of peerConnections.value) {
+          const sender = pc.getSenders().find(s => s.track === videoTrack);
+          if (sender) pc.removeTrack(sender);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.value?.emit("offer", { to: remoteId, offer });
+        }
+      }
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const videoTrack = stream.getVideoTracks()[0];
+        if (!videoTrack) throw new Error("No video track");
+        isVideoEnabled.value = true;
+        myStream.value?.addTrack(videoTrack);
+        for (const [remoteId, pc] of peerConnections.value) {
+          pc.addTrack(videoTrack, myStream.value!);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.value?.emit("offer", { to: remoteId, offer });
+        }
+      } catch (err) {
+        console.error("[WebRTC] Failed to get video track", err);
+        error.value = "Нет доступа к камере";
+      }
+    }
   }
 
   onUnmounted(leave);
@@ -346,12 +388,14 @@ export function useVoiceRoom() {
     roomId,
     userName,
     isMuted,
+    isVideoEnabled,
     isConnected,
     roomFull,
     error,
     join,
     leave,
     toggleMute,
+    toggleVideo,
     resumeAudioContextIfNeeded: () => {}, // empty function for backward compatibility with UI
   };
 }

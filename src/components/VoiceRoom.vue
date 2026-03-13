@@ -21,12 +21,15 @@ const {
   getVolume,
   setVolume,
   isMuted,
+  isVideoEnabled,
   isConnected,
   roomFull,
   error,
   join,
   leave,
   toggleMute,
+  toggleVideo,
+  myStream,
   resumeAudioContextIfNeeded,
 } = useVoiceRoom()
 
@@ -42,6 +45,19 @@ function onLeave() {
   leave()
   emit('leave')
 }
+
+// custom directive to bind MediaStream easily
+import type { DirectiveBinding } from 'vue'
+const vStream = {
+  mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
+    if (binding.value) el.srcObject = binding.value
+  },
+  updated(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
+    if (el.srcObject !== binding.value) {
+      el.srcObject = binding.value ?? null
+    }
+  }
+}
 </script>
 
 <template>
@@ -49,7 +65,10 @@ function onLeave() {
     <Card>
       <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Комната: {{ roomId }}</CardTitle>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+          <Button :variant="isVideoEnabled ? 'secondary' : 'outline'" @click="toggleVideo">
+            {{ isVideoEnabled ? 'Выключить камеру' : 'Включить камеру' }}
+          </Button>
           <Button :variant="isMuted ? 'destructive' : 'secondary'" @click="toggleMute">
             {{ isMuted ? 'Включить микрофон' : 'Выключить микрофон' }}
           </Button>
@@ -68,6 +87,26 @@ function onLeave() {
             «Включить звук»
           </Button>
         </p>
+      </CardContent>
+    </Card>
+
+    <Card v-if="isVideoEnabled || participants.some(p => p.stream && p.stream.getVideoTracks().length)">
+      <CardHeader>
+        <CardTitle>Видеочат</CardTitle>
+      </CardHeader>
+      <CardContent class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Я -->
+        <div v-if="isVideoEnabled && myStream" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
+          <video v-stream="myStream" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">Вы</div>
+        </div>
+        <!-- Другие -->
+        <template v-for="p in participants" :key="p.id">
+          <div v-if="p.stream && p.stream.getVideoTracks().length" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
+            <video v-stream="p.stream" autoplay playsinline class="w-full h-full object-cover"></video>
+            <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ p.userName }}</div>
+          </div>
+        </template>
       </CardContent>
     </Card>
 
