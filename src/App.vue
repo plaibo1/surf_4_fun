@@ -11,6 +11,17 @@ function onJoined(roomId: string, userName: string) {
   pendingRoomId.value = roomId.toLowerCase()
   pendingUserName.value = userName
   inRoom.value = true
+  
+  const url = new URL(window.location.href)
+  url.searchParams.set('room', pendingRoomId.value)
+  window.history.pushState({}, '', url)
+}
+
+function onLeave() {
+  inRoom.value = false
+  const url = new URL(window.location.href)
+  url.searchParams.delete('room')
+  window.history.pushState({}, '', url)
 }
 </script>
 
@@ -21,7 +32,7 @@ function onJoined(roomId: string, userName: string) {
       v-else
       :room-id="pendingRoomId"
       :user-name="pendingUserName"
-      @leave="inRoom = false"
+      @leave="onLeave"
     />
   </div>
 </template>

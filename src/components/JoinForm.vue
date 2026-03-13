@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Card from '@/components/ui/card/Card.vue'
@@ -11,9 +11,31 @@ const roomId = ref('')
 const userName = ref('')
 const emit = defineEmits<{ joined: [roomId: string, userName: string] }>()
 
+onMounted(() => {
+  const params = new URLSearchParams(window.location.search)
+  const room = params.get('room')
+  if (room) {
+    roomId.value = room
+  }
+  
+  const savedName = localStorage.getItem('surf4fun_username')
+  if (savedName) {
+    userName.value = savedName
+  }
+
+  // Auto-connect if both are present
+  if (roomId.value && userName.value) {
+    onSubmit()
+  }
+})
+
 function onSubmit() {
   if (!roomId.value.trim() || !userName.value.trim()) return
-  emit('joined', roomId.value.trim(), userName.value.trim())
+  
+  const finalName = userName.value.trim()
+  localStorage.setItem('surf4fun_username', finalName)
+  
+  emit('joined', roomId.value.trim(), finalName)
 }
 </script>
 
