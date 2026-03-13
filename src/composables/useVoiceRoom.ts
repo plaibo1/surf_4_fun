@@ -51,6 +51,7 @@ export function useVoiceRoom() {
   const peerConnections = ref<Map<string, RTCPeerConnection>>(new Map());
   /** ICE candidates received before remoteDescription is set — drain after setRemoteDescription */
   const iceCandidateQueues = ref<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const currentIceServers = ref<RTCIceServer[]>([]);
 
   async function getLocalStream(): Promise<MediaStream> {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -92,10 +93,7 @@ export function useVoiceRoom() {
     if (peerConnections.value.has(remoteId))
       return peerConnections.value.get(remoteId)!;
     const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-      ],
+      iceServers: currentIceServers.value,
     });
     peerConnections.value.set(remoteId, pc);
 
@@ -157,6 +155,16 @@ export function useVoiceRoom() {
     } catch (e) {
       error.value = "Нет доступа к микрофону";
       return;
+    }
+
+    try {
+      // Calling the REST API TO fetch the TURN Server Credentials
+      const response = await fetch("https://jamal_4_fun.metered.live/api/v1/turn/credentials?apiKey=4fcbcce99bf52f2cf449625475c0eb849f0d");
+      
+      // Saving the response in the iceServers array
+      currentIceServers.value = await response.json();
+    } catch (err) {
+      console.error("[WebRTC] Failed to fetch TURN servers:", err);
     }
 
     // Web Audio API has been removed, so no suspended context to resume here
