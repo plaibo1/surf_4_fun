@@ -25,7 +25,7 @@ export function useVoiceRoom() {
   const participants = ref<Map<string, Participant>>(new Map());
   const roomId = ref("");
   const userName = ref("");
-  const isMuted = ref(false);
+  const isMuted = ref(localStorage.getItem("isMuted") === "true");
   const isVideoEnabled = ref(false);
   const isScreenSharing = ref(false);
   const cameraTrack = ref<MediaStreamTrack | null>(null);
@@ -153,6 +153,12 @@ export function useVoiceRoom() {
       },
       video: false,
     });
+    
+    // Apply current mute state
+    stream.getAudioTracks().forEach((t) => {
+      t.enabled = !isMuted.value;
+    });
+
     myStream.value = stream;
     if (myId.value) {
       trackSpeaking(myId.value, stream);
@@ -455,6 +461,7 @@ export function useVoiceRoom() {
 
   function toggleMute() {
     isMuted.value = !isMuted.value;
+    localStorage.setItem("isMuted", String(isMuted.value));
     myStream.value?.getAudioTracks().forEach((t) => {
       t.enabled = !isMuted.value;
     });

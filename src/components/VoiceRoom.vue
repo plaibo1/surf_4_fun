@@ -55,7 +55,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Maximize } from 'lucide-vue-next'
+import { Ear, Maximize, Mic, MicOff } from 'lucide-vue-next'
 const vStream = {
   mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
     if (binding.value) el.srcObject = binding.value
@@ -174,8 +174,9 @@ function toggleFullscreen(event: Event) {
             <Ear />
           </Button>
 
-          <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" class="shrink-0 w-full sm:w-auto">
-            {{ isMuted ? 'Включить микрофон' : 'Выключить микрофон' }}
+          <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" size="icon" class="shrink-0">
+            <MicOff v-if="isMuted" />
+            <Mic v-else />
           </Button>
         </div>
       </CardContent>
