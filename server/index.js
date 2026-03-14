@@ -28,6 +28,8 @@ const rooms = new Map()
 const roomVolumeKings = new Map()
 // Store up to 50 messages per room
 const roomMessages = new Map()
+// Track streaming status for each socket id: { isVideoEnabled: boolean, isScreenSharing: boolean }
+const streamingStatuses = new Map()
 
 io.on('connection', (socket) => {
   socket.on('join-room', async ({ roomId, userName }) => {
@@ -41,17 +43,39 @@ io.on('connection', (socket) => {
     socket.roomId = roomId
     socket.userName = userName || `User ${socket.id.slice(0, 6)}`
     socket.join(roomId)
+    
+    // Initial status
+    streamingStatuses.set(socket.id, { isVideoEnabled: false, isScreenSharing: false })
 
     const roomSockets = await io.in(roomId).fetchSockets()
     const participants = roomSockets
       .filter((s) => s.id !== socket.id)
-      .map((s) => ({ id: s.id, userName: s.userName }))
+      .map((s) => ({ 
+        id: s.id, 
+        userName: s.userName,
+        streaming: streamingStatuses.get(s.id) || { isVideoEnabled: false, isScreenSharing: false }
+      }))
 
     const currentKing = roomVolumeKings.get(roomId)
     const messages = roomMessages.get(roomId) || []
     
     socket.emit('joined', { yourId: socket.id, participants, volumeKing: currentKing, messages })
-    socket.to(roomId).emit('participant-joined', { id: socket.id, userName: socket.userName })
+    socket.to(roomId).emit('participant-joined', { 
+      id: socket.id, 
+      userName: socket.userName,
+      streaming: { isVideoEnabled: false, isScreenSharing: false }
+    })
+  })
+
+  socket.on('update-streaming-status', ({ isVideoEnabled, isScreenSharing }) => {
+    const status = { isVideoEnabled, isScreenSharing }
+    streamingStatuses.set(socket.id, status)
+    if (socket.roomId) {
+      socket.to(socket.roomId).emit('streaming-status-updated', { 
+        id: socket.id, 
+        streaming: status 
+      })
+    }
   })
 
   socket.on('send-message', ({ roomId, text }) => {

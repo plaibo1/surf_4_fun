@@ -15,6 +15,7 @@ export interface Participant {
   stream?: MediaStream;
   volume: number;
   muted?: boolean;
+  streaming?: { isVideoEnabled: boolean; isScreenSharing: boolean };
   /** Dummy audio element so browser allows playback from MediaStream (autoplay policy) */
   audioElement?: HTMLAudioElement;
 }
@@ -209,7 +210,14 @@ export function useVoiceRoom() {
     }
   }
 
-  function createPeerConnection(remoteId: string, remoteName: string) {
+  function updateStreamingStatus() {
+    socket.value?.emit("update-streaming-status", {
+      isVideoEnabled: isVideoEnabled.value,
+      isScreenSharing: isScreenSharing.value,
+    });
+  }
+
+  function createPeerConnection(remoteId: string, remoteName: string, streamingStatus?: { isVideoEnabled: boolean; isScreenSharing: boolean }) {
     if (peerConnections.value.has(remoteId))
       return peerConnections.value.get(remoteId)!;
     const pc = new RTCPeerConnection({
@@ -224,9 +232,19 @@ export function useVoiceRoom() {
       id: remoteId,
       userName: remoteName,
       volume: initialVolume,
+      streaming: streamingStatus || { isVideoEnabled: false, isScreenSharing: false },
     };
     participants.value.set(remoteId, participant);
     participants.value = new Map(participants.value);
+
+    // If remote participant is already streaming, we must ensure we can receive video.
+    // In modern WebRTC, each video track needs its own transceiver slot in the SDP.
+    if (streamingStatus?.isVideoEnabled) {
+      pc.addTransceiver('video', { direction: 'recvonly' });
+    }
+    if (streamingStatus?.isScreenSharing) {
+      pc.addTransceiver('video', { direction: 'recvonly' });
+    }
 
     pc.ontrack = (e) => {
       console.log("[WebRTC] ontrack from", remoteId, "kind:", e.track.kind, "streamId:", e.streams?.[0]?.id);
@@ -315,7 +333,7 @@ export function useVoiceRoom() {
         messages: roomMessages,
       }: {
         yourId: string;
-        participants: { id: string; userName: string }[];
+        participants: { id: string; userName: string; streaming: { isVideoEnabled: boolean; isScreenSharing: boolean } }[];
         volumeKing?: { id: string; name: string; maxVolume: number } | null;
         messages: ChatMessage[];
       }) => {
@@ -330,7 +348,7 @@ export function useVoiceRoom() {
         }
         for (const p of list) {
           peerVolumes.value[p.id] = 100;
-          const pc = createPeerConnection(p.id, p.userName);
+          const pc = createPeerConnection(p.id, p.userName, p.streaming);
           console.log("[WebRTC] createOffer for", p.id);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
@@ -349,14 +367,24 @@ export function useVoiceRoom() {
       async ({
         id: remoteId,
         userName: remoteName,
+        streaming: remoteStreaming,
       }: {
         id: string;
         userName: string;
+        streaming: { isVideoEnabled: boolean; isScreenSharing: boolean };
       }) => {
         peerVolumes.value[remoteId] = 100;
-        createPeerConnection(remoteId, remoteName);
+        createPeerConnection(remoteId, remoteName, remoteStreaming);
       },
     );
+
+    s.on("streaming-status-updated", ({ id, streaming }: { id: string, streaming: { isVideoEnabled: boolean, isScreenSharing: boolean } }) => {
+      const p = participants.value.get(id);
+      if (p) {
+        p.streaming = streaming;
+        participants.value = new Map(participants.value);
+      }
+    });
 
     s.on("volume-king-updated", (newKing: { id: string; name: string; maxVolume: number } | null) => {
       volumeKing.value = newKing;
@@ -389,12 +417,14 @@ export function useVoiceRoom() {
         from: remoteId,
         userName: remoteName,
         offer,
+        streaming: remoteStreaming,
       }: {
         from: string;
         userName: string;
         offer: RTCSessionDescriptionInit;
+        streaming?: { isVideoEnabled: boolean; isScreenSharing: boolean };
       }) => {
-        const pc = createPeerConnection(remoteId, remoteName);
+        const pc = createPeerConnection(remoteId, remoteName, remoteStreaming);
         console.log("[WebRTC] setRemoteDescription(offer) for", remoteId);
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         await drainIceQueue(remoteId, pc);
@@ -544,12 +574,13 @@ export function useVoiceRoom() {
         myStream.value.removeTrack(cameraTrack.value);
         myStream.value = new MediaStream(myStream.value.getTracks());
       }
+      updateStreamingStatus();
       for (const [remoteId, pc] of peerConnections.value) {
         const sender = pc.getSenders().find(s => s.track === cameraTrack.value);
         if (sender) pc.removeTrack(sender);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        socket.value?.emit("offer", { to: remoteId, offer });
+        socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
       }
       cameraTrack.value = null;
     } else {
@@ -562,11 +593,12 @@ export function useVoiceRoom() {
         if (!myStream.value) myStream.value = new MediaStream();
         myStream.value.addTrack(track);
         myStream.value = new MediaStream(myStream.value.getTracks());
+        updateStreamingStatus();
         for (const [remoteId, pc] of peerConnections.value) {
           pc.addTrack(track, myStream.value);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          socket.value?.emit("offer", { to: remoteId, offer });
+          socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
         }
       } catch (err) {
         console.error("[WebRTC] Failed to get video track", err);
@@ -583,12 +615,13 @@ export function useVoiceRoom() {
         myStream.value.removeTrack(screenTrack.value);
         myStream.value = new MediaStream(myStream.value.getTracks());
       }
+      updateStreamingStatus();
       for (const [remoteId, pc] of peerConnections.value) {
         const sender = pc.getSenders().find(s => s.track === screenTrack.value);
         if (sender) pc.removeTrack(sender);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        socket.value?.emit("offer", { to: remoteId, offer });
+        socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
       }
       screenTrack.value = null;
     } else {
@@ -612,12 +645,13 @@ export function useVoiceRoom() {
         }
         myStream.value.addTrack(track);
         myStream.value = new MediaStream(myStream.value.getTracks());
+        updateStreamingStatus();
         
         for (const [remoteId, pc] of peerConnections.value) {
           pc.addTrack(track, myStream.value);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          socket.value?.emit("offer", { to: remoteId, offer });
+          socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
         }
       } catch (err) {
         console.error("[WebRTC] Failed to get screen share", err);
