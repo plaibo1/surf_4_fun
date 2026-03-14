@@ -69,6 +69,33 @@ async function onSendMessage() {
   scrollToBottom()
 }
 
+function parseMessage(text: string) {
+  if (!text) return [];
+  // Разделяем по ссылкам (http(s)://... или ip-адреса с портом X.X.X.X:PORT)
+  const regex = /(https?:\/\/[^\s]+|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}\b)/;
+  const parts = text.split(regex);
+  return parts.map((part, index) => ({
+    id: index,
+    isLink: /^https?:\/\//.test(part) || /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}$/.test(part),
+    text: part
+  })).filter(p => p.text);
+}
+
+const copiedLink = ref<string | null>(null);
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    copiedLink.value = text;
+    setTimeout(() => {
+      if (copiedLink.value === text) {
+         copiedLink.value = null;
+      }
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy', err);
+  }
+}
+
 watch(
   () => [props.roomId, props.userName] as const,
   ([rId, uName]) => {
@@ -84,7 +111,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Maximize, Mic, MicOff, Send } from 'lucide-vue-next'
+import { Ear, Maximize, Mic, MicOff, Send, Copy, Check } from 'lucide-vue-next'
 const vStream = {
   mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
     if (binding.value) el.srcObject = binding.value
@@ -295,11 +322,30 @@ function toggleFullscreen(event: Event) {
                   :class="{'text-right': msg.senderId === myId}">
               {{ msg.senderName }} <span v-if="msg.senderId === myId">(Вы)</span>
             </span>
-            <div class="text-sm p-2.5 rounded-lg w-fit max-w-[85%] break-words shadow-sm"
+            <div class="text-sm p-2.5 rounded-lg w-fit max-w-[85%] break-words shadow-sm whitespace-pre-wrap"
                  :class="msg.senderId === myId 
                     ? 'bg-primary text-primary-foreground self-end rounded-br-none' 
                     : 'bg-background border rounded-bl-none'">
-              {{ msg.text }}
+              <template v-for="part in parseMessage(msg.text)" :key="part.id">
+                <span v-if="part.isLink" class="inline-flex items-center gap-1 align-bottom">
+                  <button 
+                    @click="copyToClipboard(part.text)"
+                    class="p-0.5 rounded-md transition-colors text-muted-foreground hover:bg-muted/50 hover:text-foreground shrink-0 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    :title="copiedLink === part.text ? 'Скопировано!' : 'Скопировать'"
+                  >
+                    <Check v-if="copiedLink === part.text" class="w-3.5 h-3.5 text-green-500" />
+                    <Copy v-else class="w-3.5 h-3.5" />
+                  </button>
+                  <span 
+                        @click="copyToClipboard(part.text)" 
+                        class="underline cursor-pointer transition-colors relative"
+                        :class="(copiedLink === part.text) ? 'text-green-500 dark:text-green-400' : 'hover:opacity-80 font-medium'"
+                        :title="copiedLink === part.text ? 'Ссылка скопирована!' : 'Скопировать ссылку'">
+                    {{ part.text }}
+                  </span>
+                </span>
+                <span v-else>{{ part.text }}</span>
+              </template>
             </div>
           </div>
           <p v-if="messages.length === 0" class="text-muted-foreground text-sm text-center mt-10">
