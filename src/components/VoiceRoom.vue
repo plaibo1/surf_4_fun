@@ -55,7 +55,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear } from 'lucide-vue-next'
+import { Ear, Maximize } from 'lucide-vue-next'
 const vStream = {
   mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
     if (binding.value) el.srcObject = binding.value
@@ -78,6 +78,22 @@ const vStream = {
 
 function createStream(track: MediaStreamTrack) {
   return new MediaStream([track])
+}
+
+function toggleFullscreen(event: Event) {
+  const target = event.currentTarget as HTMLElement;
+  const container = target.classList.contains('group') ? target : target.closest('.group');
+  if (!container) return;
+  
+  if (!document.fullscreenElement) {
+    container.requestFullscreen().catch((err) => {
+      console.warn(`Error attempting to enable fullscreen: ${err.message}`);
+    });
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }
 }
 </script>
 
@@ -172,17 +188,23 @@ function createStream(track: MediaStreamTrack) {
       <CardContent class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Я -->
         <template v-if="myStream">
-          <div v-for="track in myStream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
+          <div v-for="track in myStream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center" @dblclick="toggleFullscreen">
             <video v-stream="createStream(track)" autoplay playsinline muted class="w-full h-full object-cover"></video>
             <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ userName }} (Вы)</div>
+            <button @click.stop="toggleFullscreen" class="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity" title="На весь экран">
+              <Maximize class="w-4 h-4" />
+            </button>
           </div>
         </template>
         <!-- Другие -->
         <template v-for="p in participants" :key="p.id">
           <template v-if="p.stream">
-            <div v-for="track in p.stream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
+            <div v-for="track in p.stream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center" @dblclick="toggleFullscreen">
               <video v-stream="createStream(track)" autoplay playsinline class="w-full h-full object-cover"></video>
               <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ p.userName }}</div>
+              <button @click.stop="toggleFullscreen" class="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity" title="На весь экран">
+                <Maximize class="w-4 h-4" />
+              </button>
             </div>
           </template>
         </template>
