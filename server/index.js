@@ -26,6 +26,8 @@ const io = new Server(httpServer, {
 const rooms = new Map()
 // Keep track of the highest volume record for each room
 const roomVolumeKings = new Map()
+// Store up to 50 messages per room
+const roomMessages = new Map()
 
 io.on('connection', (socket) => {
   socket.on('join-room', async ({ roomId, userName }) => {
@@ -46,8 +48,30 @@ io.on('connection', (socket) => {
       .map((s) => ({ id: s.id, userName: s.userName }))
 
     const currentKing = roomVolumeKings.get(roomId)
-    socket.emit('joined', { yourId: socket.id, participants, volumeKing: currentKing })
+    const messages = roomMessages.get(roomId) || []
+    
+    socket.emit('joined', { yourId: socket.id, participants, volumeKing: currentKing, messages })
     socket.to(roomId).emit('participant-joined', { id: socket.id, userName: socket.userName })
+  })
+
+  socket.on('send-message', ({ roomId, text }) => {
+    const list = roomMessages.get(roomId) || []
+    const message = {
+      id: Math.random().toString(36).slice(2, 9),
+      text,
+      senderId: socket.id,
+      senderName: socket.userName,
+      timestamp: Date.now()
+    }
+    
+    list.push(message)
+    // Keep only the last 50 messages
+    if (list.length > 50) {
+      list.shift()
+    }
+    roomMessages.set(roomId, list)
+
+    io.to(roomId).emit('new-message', message)
   })
 
   socket.on('new-volume-king', ({ roomId, volumeKing }) => {
@@ -77,6 +101,7 @@ io.on('connection', (socket) => {
         if (room.size === 0) {
           rooms.delete(roomId)
           roomVolumeKings.delete(roomId)
+          roomMessages.delete(roomId)
         } else {
           rooms.set(roomId, room)
           // If the king leaves, we reset the king for the room

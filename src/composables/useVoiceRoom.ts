@@ -19,6 +19,14 @@ export interface Participant {
   audioElement?: HTMLAudioElement;
 }
 
+export interface ChatMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  timestamp: number;
+}
+
 export function useVoiceRoom() {
   const { saveVolume, getVolume: getStorageVolume } = useVolumeStorage();
   const socket = ref<ReturnType<typeof io> | null>(null);
@@ -36,6 +44,8 @@ export function useVoiceRoom() {
   const isConnected = ref(false);
   const roomFull = ref(false);
   const error = ref<string | null>(null);
+
+  const messages = ref<ChatMessage[]>([]);
 
   // Volume King tracking
   const volumeKing = ref<{ id: string; name: string; maxVolume: number } | null>(null);
@@ -301,13 +311,16 @@ export function useVoiceRoom() {
         yourId,
         participants: list,
         volumeKing: roomKing,
+        messages: roomMessages,
       }: {
         yourId: string;
         participants: { id: string; userName: string }[];
         volumeKing?: { id: string; name: string; maxVolume: number } | null;
+        messages: ChatMessage[];
       }) => {
         myId.value = yourId;
         isConnected.value = true;
+        messages.value = roomMessages || [];
         if (roomKing) {
           volumeKing.value = roomKing;
         }
@@ -346,6 +359,10 @@ export function useVoiceRoom() {
 
     s.on("volume-king-updated", (newKing: { id: string; name: string; maxVolume: number } | null) => {
       volumeKing.value = newKing;
+    });
+
+    s.on("new-message", (msg: ChatMessage) => {
+      messages.value.push(msg);
     });
 
     s.on("participant-left", ({ id: remoteId }: { id: string }) => {
@@ -436,6 +453,11 @@ export function useVoiceRoom() {
     s.emit("join-room", { roomId: rId, userName: uName });
   }
 
+  function sendMessage(text: string) {
+    if (!text.trim() || !socket.value) return;
+    socket.value.emit("send-message", { roomId: roomId.value, text });
+  }
+
   function leave() {
     socket.value?.disconnect();
     socket.value = null;
@@ -465,6 +487,7 @@ export function useVoiceRoom() {
     roomId.value = "";
     userName.value = "";
     peerVolumes.value = {};
+    messages.value = [];
   }
 
   function toggleMute() {
@@ -604,8 +627,10 @@ export function useVoiceRoom() {
     isConnected,
     roomFull,
     error,
+    messages,
     join,
     leave,
+    sendMessage,
     toggleMute,
     toggleVideo,
     toggleScreenShare,

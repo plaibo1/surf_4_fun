@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useVoiceRoom } from '@/composables/useVoiceRoom'
 import Button from '@/components/ui/button/Button.vue'
+import Input from '@/components/ui/input/Input.vue'
 import Slider from '@/components/ui/slider/Slider.vue'
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
@@ -16,6 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{ leave: [] }>()
 
 const {
+  myId,
   participants,
   roomId,
   getVolume,
@@ -38,7 +40,34 @@ const {
 
   isNoiseSuppressionEnabled,
   toggleNoiseSuppression,
+  messages,
+  sendMessage,
 } = useVoiceRoom()
+
+const newMessage = ref('')
+const messagesContainer = ref<HTMLElement | null>(null)
+
+watch(
+  () => messages.value.length,
+  async () => {
+    await nextTick()
+    scrollToBottom()
+  }
+)
+
+function scrollToBottom() {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+
+async function onSendMessage() {
+  if (!newMessage.value.trim()) return
+  sendMessage(newMessage.value)
+  newMessage.value = ''
+  await nextTick()
+  scrollToBottom()
+}
 
 watch(
   () => [props.roomId, props.userName] as const,
@@ -55,7 +84,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Maximize, Mic, MicOff } from 'lucide-vue-next'
+import { Ear, Maximize, Mic, MicOff, Send } from 'lucide-vue-next'
 const vStream = {
   mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
     if (binding.value) el.srcObject = binding.value
@@ -251,6 +280,38 @@ function toggleFullscreen(event: Event) {
         <p v-if="participants.length === 0" class="text-muted-foreground text-sm">
           Пока никого нет. Дождитесь подключения других или откройте комнату в другой вкладке.
         </p>
+      </CardContent>
+    </Card>
+
+    <!-- Чат -->
+    <Card>
+      <CardHeader>
+        <CardTitle>Чат</CardTitle>
+      </CardHeader>
+      <CardContent class="flex flex-col h-80">
+        <div ref="messagesContainer" class="flex-1 overflow-y-auto space-y-3 mb-4 p-3 border rounded-md bg-muted/10">
+          <div v-for="msg in messages" :key="msg.id" class="flex flex-col">
+            <span class="text-xs font-semibold text-muted-foreground mb-1" 
+                  :class="{'text-right': msg.senderId === myId}">
+              {{ msg.senderName }} <span v-if="msg.senderId === myId">(Вы)</span>
+            </span>
+            <div class="text-sm p-2.5 rounded-lg w-fit max-w-[85%] break-words shadow-sm"
+                 :class="msg.senderId === myId 
+                    ? 'bg-primary text-primary-foreground self-end rounded-br-none' 
+                    : 'bg-background border rounded-bl-none'">
+              {{ msg.text }}
+            </div>
+          </div>
+          <p v-if="messages.length === 0" class="text-muted-foreground text-sm text-center mt-10">
+            Нет сообщений. Напишите первым!
+          </p>
+        </div>
+        <form @submit.prevent="onSendMessage" class="flex gap-2 shrink-0">
+          <Input v-model="newMessage" placeholder="Введите сообщение..." class="flex-1" />
+          <Button type="submit" size="icon" :disabled="!newMessage.trim()">
+            <Send class="w-4 h-4" />
+          </Button>
+        </form>
       </CardContent>
     </Card>
   </div>
