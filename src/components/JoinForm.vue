@@ -42,7 +42,7 @@ function onSubmit() {
 <template>
   <Card class="w-full max-w-md">
     <CardHeader>
-      <CardTitle class="text-2xl">Мини Discord — войти в комнату</CardTitle>
+      <CardTitle class="text-2xl">Войти в комнату</CardTitle>
     </CardHeader>
     <CardContent class="space-y-4">
       <div class="space-y-2">
