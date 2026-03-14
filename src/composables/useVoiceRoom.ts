@@ -36,6 +36,7 @@ export function useVoiceRoom() {
   const roomId = ref("");
   const userName = ref("");
   const isMuted = ref(localStorage.getItem("isMuted") === "true");
+  const isTotalMuted = ref(localStorage.getItem("isTotalMuted") === "true");
   const isVideoEnabled = ref(false);
   const isScreenSharing = ref(false);
   const cameraTrack = ref<MediaStreamTrack | null>(null);
@@ -204,7 +205,7 @@ export function useVoiceRoom() {
   ) {
     const p = participants.value.get(peerId);
     if (p?.audioElement) {
-      p.audioElement.volume = volume / 100;
+      p.audioElement.volume = (isTotalMuted.value ? 0 : volume) / 100;
     }
   }
 
@@ -246,7 +247,7 @@ export function useVoiceRoom() {
         audioEl.autoplay = true;
         audioEl.setAttribute("playsinline", "true");
         audioEl.srcObject = stream;
-        audioEl.volume = getVolume(remoteId) / 100;
+        audioEl.volume = (isTotalMuted.value ? 0 : getVolume(remoteId)) / 100;
         document.body.appendChild(audioEl);
         audioEl.play().catch((err) => console.warn("[WebRTC] audio play failed for", remoteId, err));
         participant.audioElement = audioEl;
@@ -493,8 +494,45 @@ export function useVoiceRoom() {
   function toggleMute() {
     isMuted.value = !isMuted.value;
     localStorage.setItem("isMuted", String(isMuted.value));
+
+    // Если мы включаем микрофон при активном тотальном муте — выключаем тотальный мут
+    if (!isMuted.value && isTotalMuted.value) {
+      isTotalMuted.value = false;
+      localStorage.setItem("isTotalMuted", "false");
+      
+      // Восстанавливаем громкость всех участников
+      participants.value.forEach((p, id) => {
+        if (p.audioElement) {
+          const vol = getVolume(id);
+          p.audioElement.volume = vol / 100;
+        }
+      });
+    }
+
     myStream.value?.getAudioTracks().forEach((t) => {
       t.enabled = !isMuted.value;
+    });
+  }
+
+  function toggleTotalMute() {
+    isTotalMuted.value = !isTotalMuted.value;
+    localStorage.setItem("isTotalMuted", String(isTotalMuted.value));
+
+    // Синхронизируем состояние микрофона с тотальным мутом
+    isMuted.value = isTotalMuted.value;
+    localStorage.setItem("isMuted", String(isMuted.value));
+
+    // Обновляем состояние дорожек микрофона
+    myStream.value?.getAudioTracks().forEach((t) => {
+      t.enabled = !isMuted.value;
+    });
+
+    // Обновляем громкость всех участников
+    participants.value.forEach((p, id) => {
+      if (p.audioElement) {
+        const vol = getVolume(id);
+        p.audioElement.volume = (isTotalMuted.value ? 0 : vol) / 100;
+      }
     });
   }
 
@@ -621,6 +659,7 @@ export function useVoiceRoom() {
     roomId,
     userName,
     isMuted,
+    isTotalMuted,
     isVideoEnabled,
     isScreenSharing,
     isNoiseSuppressionEnabled,
@@ -632,6 +671,7 @@ export function useVoiceRoom() {
     leave,
     sendMessage,
     toggleMute,
+    toggleTotalMute,
     toggleVideo,
     toggleScreenShare,
     toggleNoiseSuppression,

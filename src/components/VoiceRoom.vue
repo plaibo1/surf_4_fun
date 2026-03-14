@@ -23,6 +23,7 @@ const {
   getVolume,
   setVolume,
   isMuted,
+  isTotalMuted,
   isVideoEnabled,
   isScreenSharing,
   isConnected,
@@ -31,6 +32,7 @@ const {
   join,
   leave,
   toggleMute,
+  toggleTotalMute,
   toggleVideo,
   toggleScreenShare,
   myStream,
@@ -111,7 +113,9 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Maximize, Mic, MicOff, Send, Copy, Check } from 'lucide-vue-next'
+import { Ear, Maximize, Mic, MicOff, Send, Copy, Check, Headphones, HeadphoneOffIcon } from 'lucide-vue-next'
+
+
 const vStream = {
   mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
     if (binding.value) el.srcObject = binding.value
@@ -228,6 +232,11 @@ function toggleFullscreen(event: Event) {
 
           <Button :variant="isNoiseSuppressionEnabled ? 'success' : 'outline'" @click="toggleNoiseSuppression">
             <Ear />
+          </Button>
+
+          <Button :variant="isTotalMuted ? 'destructive' : 'outline'" @click="toggleTotalMute" size="icon" class="shrink-0">
+            <Headphones v-if="!isTotalMuted" />
+            <HeadphoneOffIcon v-else />
           </Button>
 
           <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" size="icon" class="shrink-0">
