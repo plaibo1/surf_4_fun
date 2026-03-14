@@ -1,6 +1,7 @@
 import { ref, computed, onUnmounted } from "vue";
 import { io } from "socket.io-client";
 import hark from "hark";
+import { useVolumeStorage } from "./useVolumeStorage";
 
 function getSocketUrl(): string {
   // В dev используем тот же origin — Vite проксирует /socket.io на бэкенд (избегаем SSL на порту 8000)
@@ -19,6 +20,7 @@ export interface Participant {
 }
 
 export function useVoiceRoom() {
+  const { saveVolume, getVolume: getStorageVolume } = useVolumeStorage();
   const socket = ref<ReturnType<typeof io> | null>(null);
   const myId = ref<string | null>(null);
   const myStream = ref<MediaStream | null>(null);
@@ -130,7 +132,10 @@ export function useVoiceRoom() {
   function setVolume(peerId: string, value: number) {
     peerVolumes.value = { ...peerVolumes.value, [peerId]: value };
     const p = participants.value.get(peerId);
-    if (p) setRemoteStreamVolume(peerId, value);
+    if (p) {
+      setRemoteStreamVolume(peerId, value);
+      saveVolume(p.userName, value);
+    }
   }
 
   const peerConnections = ref<Map<string, RTCPeerConnection>>(new Map());
@@ -201,10 +206,13 @@ export function useVoiceRoom() {
     });
     peerConnections.value.set(remoteId, pc);
 
+    const initialVolume = getStorageVolume(remoteName);
+    peerVolumes.value[remoteId] = initialVolume;
+
     const participant: Participant = {
       id: remoteId,
       userName: remoteName,
-      volume: getVolume(remoteId),
+      volume: initialVolume,
     };
     participants.value.set(remoteId, participant);
     participants.value = new Map(participants.value);
