@@ -26,7 +26,6 @@ const {
   isTotalMuted,
   isVideoEnabled,
   isScreenSharing,
-  isConnected,
   roomFull,
   error,
   join,
@@ -37,7 +36,6 @@ const {
   toggleScreenShare,
   myStream,
   isLocalSpeaking,
-  localAudioLevel,
   volumeKing,
 
   isNoiseSuppressionEnabled,
@@ -84,6 +82,7 @@ function parseMessage(text: string) {
 }
 
 const copiedLink = ref<string | null>(null);
+const currentUrl = window.location.href;
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -113,7 +112,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Maximize, Mic, MicOff, Send, Copy, Check, Headphones, HeadphoneOffIcon } from 'lucide-vue-next'
+import { Ear, Maximize, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2 } from 'lucide-vue-next'
 
 
 const vStream = {
@@ -158,91 +157,154 @@ function toggleFullscreen(event: Event) {
 </script>
 
 <template>
-  <div class="w-full max-w-2xl space-y-4">
-    <Card>
-      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Комната: {{ roomId }}</CardTitle>
-        <div class="flex flex-wrap gap-2">
-          <Button :variant="isScreenSharing ? 'secondary' : 'outline'" @click="toggleScreenShare">
-            {{ isScreenSharing ? 'Остановить показ' : 'Показать экран' }}
-          </Button>
-          <Button :variant="isVideoEnabled ? 'secondary' : 'outline'" @click="toggleVideo">
-            {{ isVideoEnabled ? 'Выключить камеру' : 'Включить камеру' }}
-          </Button>
-          <Button variant="outline" @click="onLeave">Выйти</Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p v-if="error" class="text-destructive text-sm mb-2">{{ error }}</p>
-        <p v-if="roomFull" class="text-destructive text-sm mb-2">В комнате уже 5 человек.</p>
-        <p v-if="isConnected" class="text-muted-foreground text-sm">
-          Участников: {{ participants.length + 1 }}
-        </p>
-
-        <!-- Король громкости -->
-        <div v-if="volumeKing" class="mt-4 p-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 flex items-center justify-between shadow-sm shadow-yellow-500/10">
+  <div class="w-full max-w-2xl space-y-6">
+    <!-- Главная панель комнаты -->
+    <Card class="overflow-hidden border-none shadow-xl bg-gradient-to-br from-card to-muted/30">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+      
+      <CardHeader class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
+        <div class="space-y-1">
           <div class="flex items-center gap-3">
-            <div class="relative">
-              <div class="w-10 h-10 rounded-full bg-yellow-500/20 text-yellow-600 flex items-center justify-center text-lg font-bold">
-                {{ volumeKing.name.charAt(0).toUpperCase() }}
-              </div>
-              <div class="absolute -top-3 -right-2 text-xl drop-shadow-md transform rotate-12">
-                👑
-              </div>
-            </div>
-            <div>
-              <p class="text-sm font-semibold text-yellow-600 dark:text-yellow-500">Король громкости</p>
-              <p class="text-sm font-medium">{{ volumeKing.name }}</p>
+            <CardTitle class="text-2xl font-black tracking-tighter text-foreground uppercase truncate max-w-[250px]">
+              {{ roomId }}
+            </CardTitle>
+            <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:bg-primary/10 transition-all" @click="copyToClipboard(roomId)">
+              <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-500" />
+              <Copy v-else class="h-4 w-4 text-muted-foreground" />
+            </Button>
+
+            <div class="bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-primary/20">
+              Voice Room
             </div>
           </div>
-          <div class="text-xs text-muted-foreground text-right hidden sm:block">
-            Рекорд: {{ Math.round(volumeKing.maxVolume + 100) }} / 100
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="flex -space-x-2 mr-2">
+            <div v-for="p in participants.slice(0, 3)" :key="p.id" class="w-8 h-8 rounded-full border-2 border-background bg-primary/20 flex items-center justify-center text-[10px] font-bold">
+              {{ p.userName.charAt(0).toUpperCase() }}
+            </div>
+            <div v-if="participants.length > 3" class="w-8 h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-bold">
+              +{{ participants.length - 3 }}
+            </div>
+          </div>
+          <span class="text-sm font-semibold mr-4 text-foreground">{{ participants.length + 1 }} в сети</span>
+        </div>
+      </CardHeader>
+
+      <CardContent class="space-y-4">
+        <!-- Глобальные действия -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Button :variant="isScreenSharing ? 'secondary' : 'outline'" class="w-full gap-2 border-primary/10 hover:border-primary/30" @click="toggleScreenShare">
+            <Monitor v-if="!isScreenSharing" class="h-4 w-4" />
+            <MonitorOff v-else class="h-4 w-4" />
+            <span class="hidden sm:inline text-xs">{{ isScreenSharing ? 'Стоп экран' : 'Экран' }}</span>
+          </Button>
+          <Button :variant="isVideoEnabled ? 'secondary' : 'outline'" class="w-full gap-2 border-primary/10 hover:border-primary/30" @click="toggleVideo">
+            <Video v-if="!isVideoEnabled" class="h-4 w-4" />
+            <VideoOff v-else class="h-4 w-4" />
+            <span class="hidden sm:inline text-xs">{{ isVideoEnabled ? 'Выкл камеру' : 'Камера' }}</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            class="w-full gap-2 border-primary/10 hover:border-primary/30 transition-all" 
+            :class="{ 'border-green-500/50 bg-green-500/5 text-green-600': copiedLink === currentUrl }"
+            @click="copyToClipboard(currentUrl)"
+          >
+            <Check v-if="copiedLink === currentUrl" class="h-4 w-4" />
+            <Share2 v-else class="h-4 w-4" />
+            <span class="hidden sm:inline text-xs">
+              {{ copiedLink === currentUrl ? 'Скопировано!' : 'Пригласить' }}
+            </span>
+          </Button>
+          <Button variant="destructive" class="w-full gap-2 shadow-lg shadow-destructive/10" @click="onLeave">
+            <LogOut class="h-4 w-4" />
+            <span class="hidden sm:inline text-xs">Выйти</span>
+          </Button>
+        </div>
+
+        <p v-if="error" class="text-destructive text-xs font-medium text-center bg-destructive/10 py-2 rounded-md border border-destructive/20">{{ error }}</p>
+        <p v-if="roomFull" class="text-destructive text-xs font-medium text-center bg-destructive/10 py-2 rounded-md border border-destructive/20">В комнате уже 5 человек.</p>
+
+        <!-- Король громкости (Integrated) -->
+        <div v-if="volumeKing" class="p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 flex items-center justify-between shadow-inner">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-10 h-10 rounded-full bg-yellow-500 text-yellow-950 flex items-center justify-center text-lg font-black shadow-lg shadow-yellow-500/20">
+                {{ volumeKing.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="absolute -top-4 -right-2 text-2xl drop-shadow-md animate-bounce duration-1000">👑</div>
+            </div>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-widest text-yellow-600/80">Current Volume King</p>
+              <p class="text-sm font-bold text-foreground">{{ volumeKing.name }}</p>
+            </div>
+          </div>
+          <div class="text-[10px] font-mono font-bold bg-yellow-500/10 px-2 py-1 rounded text-yellow-700">
+            PWR: {{ Math.round(volumeKing.maxVolume + 100) }}%
           </div>
         </div>
       </CardContent>
     </Card>
 
-    <!-- Моя карточка (панель участника) -->
-    <Card class="border-primary/20 bg-muted/20">
-      <CardContent class="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <!-- Моя карточка (панель управления собой) -->
+    <Card class="border-primary/30 bg-primary/5 shadow-lg shadow-primary/5 relative overflow-hidden">
+      <div v-if="isLocalSpeaking" class="absolute inset-0 bg-green-500/5 animate-pulse pointer-events-none"></div>
+      <CardContent class="p-4 flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
         <div class="flex items-center gap-4 w-full">
-          <div 
-            class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0 transition-transform duration-75"
-            :class="isLocalSpeaking ? 'bg-primary/10 text-primary ring-2 ring-green-500 ring-offset-2 ring-offset-background' : 'bg-primary/10 text-primary'"
-            :style="{ transform: `scale(${1 + localAudioLevel * 0.2})` }"
-          >
-            {{ userName.charAt(0).toUpperCase() }}
-          </div>
-          <div class="flex-1">
-            <h3 class="font-semibold text-lg leading-none flex items-center gap-2">
-              {{ userName }}
-              <span class="text-xs font-normal text-muted-foreground bg-background px-2 py-0.5 rounded-full border">Вы</span>
-            </h3>
-            <div class="flex items-center gap-2 mt-1">
-              <span class="relative flex h-2.5 w-2.5">
-                <span :class="isMuted ? 'bg-destructive/50' : 'bg-green-500'" class="absolute inline-flex h-full w-full rounded-full opacity-75"></span>
-                <span :class="isMuted ? 'bg-destructive' : 'bg-green-500'" class="relative inline-flex rounded-full h-2.5 w-2.5"></span>
-              </span>
-              <span class="text-sm text-muted-foreground">
-                {{ isMuted ? 'Микрофон выключен' : 'Вас слышно' }}
-              </span>
+          <div class="relative group">
+            <div 
+              class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0 transition-all duration-300 shadow-2xl overflow-hidden"
+              :class="isLocalSpeaking ? 'bg-primary text-primary-foreground scale-105 ring-4 ring-green-500/30' : 'bg-primary/20 text-primary'"
+            >
+              {{ userName.charAt(0).toUpperCase() }}
+              <!-- Анимация волн когда говоришь -->
+              <span v-if="isLocalSpeaking" class="absolute -inset-1 rounded-2xl border-2 border-green-500 animate-ping opacity-20"></span>
+            </div>
+            <div class="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-4 border-background shadow-lg transition-colors duration-300" :class="isMuted ? 'bg-destructive' : 'bg-green-500'">
+              <MicOff v-if="isMuted" class="h-3.5 w-3.5 text-white" />
+              <Mic v-else class="h-3.5 w-3.5 text-white" />
             </div>
           </div>
 
+          <div class="flex-1 overflow-hidden">
+            <div class="flex items-center gap-2">
+              <h3 class="font-black text-xl truncate tracking-tight text-foreground">{{ userName }}</h3>
+              <span class="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm">Вы</span>
+            </div>
+            <p class="text-sm font-medium flex items-center gap-2 mt-0.5">
+              <span v-if="isMuted" class="text-destructive flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse"></span>
+                Микрофон выключен
+              </span>
+              <span v-else class="text-green-500 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-bounce"></span>
+                Вас отлично слышно
+              </span>
+            </p>
+          </div>
 
-          <Button :variant="isNoiseSuppressionEnabled ? 'success' : 'outline'" @click="toggleNoiseSuppression">
-            <Ear />
-          </Button>
+          <!-- Компактный блок управления звуком -->
+          <div class="flex items-center gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-2xl border border-primary/10 shadow-inner">
+            <Button :variant="isNoiseSuppressionEnabled ? 'success' : 'ghost'" size="icon" @click="toggleNoiseSuppression" class="h-11 w-11 rounded-xl transition-all hover:scale-105 active:scale-95" title="Подавление шума">
+              <Ear class="h-5 w-5" />
+            </Button>
 
-          <Button :variant="isTotalMuted ? 'destructive' : 'outline'" @click="toggleTotalMute" size="icon" class="shrink-0">
-            <Headphones v-if="!isTotalMuted" />
-            <HeadphoneOffIcon v-else />
-          </Button>
+            <div class="h-8 w-[1px] bg-border/50 mx-1"></div>
 
-          <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" size="icon" class="shrink-0">
-            <MicOff v-if="isMuted" />
-            <Mic v-else />
-          </Button>
+            <Button :variant="isTotalMuted ? 'destructive' : 'ghost'" @click="toggleTotalMute" size="icon" class="h-11 w-11 rounded-xl transition-all hover:scale-105 active:scale-95 group relative overflow-hidden" title="Тотальный мут (Deafen)">
+              <div v-if="isTotalMuted" class="relative z-10 flex items-center justify-center">
+                <Headphones class="h-5 w-5" />
+                <div class="absolute w-[22px] h-[2px] bg-white rotate-45 shadow-sm rounded-full"></div>
+              </div>
+              <Headphones v-else class="h-5 w-5" />
+            </Button>
+
+            <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" size="icon" class="h-11 w-11 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20" title="Микрофон">
+              <MicOff v-if="isMuted" class="h-5 w-5" />
+              <Mic v-else class="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
