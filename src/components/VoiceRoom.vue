@@ -112,7 +112,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Maximize, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare } from 'lucide-vue-next'
+import { Ear, Maximize, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, UserPlus } from 'lucide-vue-next'
 
 
 const vStream = {
@@ -375,9 +375,33 @@ function toggleFullscreen(event: Event) {
             />
           </div>
         </div>
-        <p v-if="participants.length === 0" class="text-muted-foreground text-sm">
-          Пока никого нет. Дождитесь подключения других или откройте комнату в другой вкладке.
-        </p>
+        <!-- Состояние: Ожидание участников (UX Redesign) -->
+        <div v-if="participants.length === 0" class="py-12 px-6 flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in duration-700">
+          <div class="relative group">
+            <div class="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse group-hover:bg-primary/30 transition-all"></div>
+            <div class="relative w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center border border-primary/10 shadow-inner">
+              <Ghost class="h-12 w-12 text-primary/40" />
+            </div>
+          </div>
+
+          <div class="space-y-2 max-w-[280px]">
+            <h3 class="font-black text-xl uppercase tracking-tighter text-foreground italic">В комнате пусто</h3>
+            <p class="text-sm font-medium text-muted-foreground leading-relaxed">
+              Вы единственный участник. Поделитесь ссылкой, чтобы кто-то смог присоединиться к вам.
+            </p>
+          </div>
+
+          <Button 
+            variant="outline" 
+            class="rounded-xl px-8 h-12 gap-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all active:scale-95"
+            @click="copyToClipboard(currentUrl)"
+          >
+            <UserPlus class="h-4 w-4" />
+            <span class="text-xs font-bold uppercase tracking-widest">
+              {{ copiedLink === currentUrl ? 'Ссылка скопирована' : 'Пригласить друзей' }}
+            </span>
+          </Button>
+        </div>
       </CardContent>
     </Card>
 
