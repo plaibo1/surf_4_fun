@@ -36,6 +36,7 @@ const {
   toggleScreenShare,
   myStream,
   isLocalSpeaking,
+  localAudioLevel,
   volumeKing,
 
   isNoiseSuppressionEnabled,
@@ -44,8 +45,8 @@ const {
   sendMessage,
 } = useVoiceRoom()
 
-const hasStreams = computed(() => 
-  (myStream.value?.getVideoTracks()?.length ?? 0) > 0 || 
+const hasStreams = computed(() =>
+  (myStream.value?.getVideoTracks()?.length ?? 0) > 0 ||
   participants.value.some(p => (p.stream?.getVideoTracks()?.length ?? 0) > 0)
 )
 
@@ -163,15 +164,11 @@ function toggleFullscreen(event: Event) {
 </script>
 
 <template>
-  <div 
-    class="w-full mx-auto flex flex-col gap-6 p-4 transition-all duration-700"
-    :class="hasStreams ? 'max-w-[1600px] xl:flex-row' : 'max-w-2xl items-center'"
-  >
+  <div class="w-full mx-auto flex flex-col gap-6 p-4 transition-all duration-700"
+    :class="hasStreams ? 'max-w-[1600px] xl:flex-row' : 'max-w-2xl items-center'">
     <!-- Левая колонка: Управление и Чат -->
-    <div 
-      class="w-full space-y-6 shrink-0 transition-all duration-700"
-      :class="hasStreams ? 'xl:w-[550px] order-2 xl:order-1' : ''"
-    >
+    <div class="w-full space-y-6 shrink-0 transition-all duration-700"
+      :class="hasStreams ? 'xl:w-[550px] order-2 xl:order-1' : ''">
       <!-- Главная панель комнаты -->
       <Card class="overflow-hidden border-none shadow-xl bg-gradient-to-br from-card to-muted/30">
         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
@@ -271,12 +268,14 @@ function toggleFullscreen(event: Event) {
       <!-- Моя карточка -->
       <Card class="border-primary/30 bg-primary/5 shadow-lg shadow-primary/5 relative overflow-hidden">
         <CardContent class="p-4 flex flex-col items-center justify-between gap-6 relative z-10">
-          <div class="flex items-center gap-4 w-full">
+          <div class="flex items-center gap-6 w-full">
             <div class="relative group">
               <div
-                class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0 transition-all duration-300 shadow-2xl overflow-hidden"
-                :class="isLocalSpeaking ? 'bg-primary text-primary-foreground scale-105 ring-4 ring-green-500/30' : 'bg-primary/20 text-primary'">
+                class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0 transition-all duration-75 shadow-2xl overflow-hidden"
+                :class="isLocalSpeaking ? 'bg-primary text-primary-foreground ring-4 ring-green-500/30' : 'bg-primary/20 text-primary'"
+                :style="{ transform: `scale(${1 + localAudioLevel * 0.15})` }">
                 {{ userName.charAt(0).toUpperCase() }}
+                <!-- Анимация волн когда говоришь -->
                 <span v-if="isLocalSpeaking"
                   class="absolute -inset-1 rounded-2xl border-2 border-green-500 animate-ping opacity-20"></span>
               </div>
@@ -341,10 +340,11 @@ function toggleFullscreen(event: Event) {
         </CardHeader>
         <CardContent class="space-y-3">
           <div v-for="p in participants" :key="p.id"
-            class="flex items-center gap-4 rounded-xl border border-primary/5 bg-muted/20 p-3 transition-all hover:bg-muted/30">
+            class="flex items-center gap-6 rounded-xl border border-primary/5 bg-muted/20 p-3 transition-all hover:bg-muted/30">
             <div
-              class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0 transition-all duration-75"
-              :class="p.isSpeaking ? 'bg-primary text-primary-foreground ring-2 ring-green-500' : 'bg-muted text-muted-foreground'">
+              class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0 transition-all duration-75 relative"
+              :class="p.isSpeaking ? 'bg-primary text-primary-foreground ring-2 ring-green-500' : 'bg-muted text-muted-foreground'"
+              :style="{ transform: `scale(${1 + p.audioLevel * 0.2})` }">
               {{ p.userName.charAt(0).toUpperCase() }}
             </div>
             <div class="flex-1 min-w-0">
@@ -448,7 +448,8 @@ function toggleFullscreen(event: Event) {
     </div>
 
     <!-- Правая колонка: Видеопотоки (только если есть стримы) -->
-    <div v-if="hasStreams" class="flex-1 min-w-0 order-1 xl:order-2 space-y-6 animate-in slide-in-from-right-10 duration-700">
+    <div v-if="hasStreams"
+      class="flex-1 min-w-0 order-1 xl:order-2 space-y-6 animate-in slide-in-from-right-10 duration-700">
       <Card class="border-none bg-black/5 dark:bg-white/5 shadow-2xl overflow-hidden h-fit">
         <CardHeader class="flex flex-row items-center justify-between border-b border-primary/5 pb-4">
           <div class="flex items-center gap-2">
