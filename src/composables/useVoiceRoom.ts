@@ -50,7 +50,11 @@ export function useVoiceRoom() {
   const messages = ref<ChatMessage[]>([]);
 
   // Volume King tracking
-  const volumeKing = ref<{ id: string; name: string; maxVolume: number } | null>(null);
+  const volumeKing = ref<{
+    id: string;
+    name: string;
+    maxVolume: number;
+  } | null>(null);
   const VOLUME_KING_THRESHOLD = -20; // dB threshold for considering someone a "Volume King" (loud speaking/shouting)
 
   // Hark integration
@@ -65,21 +69,21 @@ export function useVoiceRoom() {
       speechEventsMap.get(streamId)?.stop();
     }
 
-    const speechEvents = hark(stream, { 
+    const speechEvents = hark(stream, {
       threshold: -65, // Lower threshold to make it pick up sound easier
-      interval: 50 // faster checks
+      interval: 50, // faster checks
     });
-    
-    speechEvents.on('speaking', () => {
+
+    speechEvents.on("speaking", () => {
       speakingMap.value = { ...speakingMap.value, [streamId]: true };
     });
 
-    speechEvents.on('stopped_speaking', () => {
+    speechEvents.on("stopped_speaking", () => {
       speakingMap.value = { ...speakingMap.value, [streamId]: false };
       audioLevelMap.value = { ...audioLevelMap.value, [streamId]: 0 };
     });
 
-    speechEvents.on('volume_change', (currentVolume) => {
+    speechEvents.on("volume_change", (currentVolume) => {
       // Map volume from roughly -70dB (quiet) to -10dB (loud) to a 0-1 scale
       const level = Math.max(0, Math.min(1, (currentVolume + 70) / 60));
       audioLevelMap.value = { ...audioLevelMap.value, [streamId]: level };
@@ -88,12 +92,21 @@ export function useVoiceRoom() {
       if (currentVolume > VOLUME_KING_THRESHOLD) {
         if (!volumeKing.value || currentVolume > volumeKing.value.maxVolume) {
           const isMe = streamId === myId.value;
-          const uname = isMe ? userName.value : participants.value.get(streamId)?.userName;
+          const uname = isMe
+            ? userName.value
+            : participants.value.get(streamId)?.userName;
           if (uname) {
-             const newKing = { id: streamId, name: uname, maxVolume: currentVolume };
-             volumeKing.value = newKing;
-             // Broadcast the new king to the room
-             socket.value?.emit('new-volume-king', { roomId: roomId.value, volumeKing: newKing });
+            const newKing = {
+              id: streamId,
+              name: uname,
+              maxVolume: currentVolume,
+            };
+            volumeKing.value = newKing;
+            // Broadcast the new king to the room
+            socket.value?.emit("new-volume-king", {
+              roomId: roomId.value,
+              volumeKing: newKing,
+            });
           }
         }
       }
@@ -111,12 +124,12 @@ export function useVoiceRoom() {
       const newMap = { ...speakingMap.value };
       delete newMap[streamId];
       speakingMap.value = newMap;
-      
+
       const newLevelMap = { ...audioLevelMap.value };
       delete newLevelMap[streamId];
       audioLevelMap.value = newLevelMap;
     } else {
-      speechEventsMap.forEach(events => events.stop());
+      speechEventsMap.forEach((events) => events.stop());
       speechEventsMap.clear();
       speakingMap.value = {};
       audioLevelMap.value = {};
@@ -132,8 +145,12 @@ export function useVoiceRoom() {
     })),
   );
 
-  const isLocalSpeaking = computed(() => myId.value ? !!speakingMap.value[myId.value] : false);
-  const localAudioLevel = computed(() => myId.value ? (audioLevelMap.value[myId.value] || 0) : 0);
+  const isLocalSpeaking = computed(() =>
+    myId.value ? !!speakingMap.value[myId.value] : false,
+  );
+  const localAudioLevel = computed(() =>
+    myId.value ? audioLevelMap.value[myId.value] || 0 : 0,
+  );
 
   const peerVolumes = ref<Record<string, number>>({});
 
@@ -163,14 +180,10 @@ export function useVoiceRoom() {
 
   async function getLocalStream(): Promise<MediaStream> {
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        noiseSuppression: isNoiseSuppressionEnabled.value, // Подавление фонового шума
-        echoCancellation: isNoiseSuppressionEnabled.value, // Подавление эха
-        autoGainControl: true,  // Автоматическое выравнивание громкости
-      },
+      audio: true,
       video: false,
     });
-    
+
     // Apply current mute state
     stream.getAudioTracks().forEach((t) => {
       t.enabled = !isMuted.value;
@@ -187,23 +200,29 @@ export function useVoiceRoom() {
   async function drainIceQueue(peerId: string, pc: RTCPeerConnection) {
     const queue = iceCandidateQueues.value.get(peerId);
     if (!queue?.length) return;
-    console.log("[WebRTC] Draining ICE queue for", peerId, "candidates:", queue.length);
+    console.log(
+      "[WebRTC] Draining ICE queue for",
+      peerId,
+      "candidates:",
+      queue.length,
+    );
     for (const c of queue) {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(c));
         console.log("[WebRTC] addIceCandidate (from queue) ok for", peerId);
       } catch (err) {
-        console.warn("[WebRTC] addIceCandidate (from queue) failed for", peerId, err);
+        console.warn(
+          "[WebRTC] addIceCandidate (from queue) failed for",
+          peerId,
+          err,
+        );
       }
     }
     iceCandidateQueues.value.delete(peerId);
     iceCandidateQueues.value = new Map(iceCandidateQueues.value);
   }
 
-  function setRemoteStreamVolume(
-    peerId: string,
-    volume: number,
-  ) {
+  function setRemoteStreamVolume(peerId: string, volume: number) {
     const p = participants.value.get(peerId);
     if (p?.audioElement) {
       p.audioElement.volume = (isTotalMuted.value ? 0 : volume) / 100;
@@ -217,7 +236,11 @@ export function useVoiceRoom() {
     });
   }
 
-  function createPeerConnection(remoteId: string, remoteName: string, streamingStatus?: { isVideoEnabled: boolean; isScreenSharing: boolean }) {
+  function createPeerConnection(
+    remoteId: string,
+    remoteName: string,
+    streamingStatus?: { isVideoEnabled: boolean; isScreenSharing: boolean },
+  ) {
     if (peerConnections.value.has(remoteId))
       return peerConnections.value.get(remoteId)!;
     const pc = new RTCPeerConnection({
@@ -232,7 +255,10 @@ export function useVoiceRoom() {
       id: remoteId,
       userName: remoteName,
       volume: initialVolume,
-      streaming: streamingStatus || { isVideoEnabled: false, isScreenSharing: false },
+      streaming: streamingStatus || {
+        isVideoEnabled: false,
+        isScreenSharing: false,
+      },
     };
     participants.value.set(remoteId, participant);
     participants.value = new Map(participants.value);
@@ -240,14 +266,21 @@ export function useVoiceRoom() {
     // If remote participant is already streaming, we must ensure we can receive video.
     // In modern WebRTC, each video track needs its own transceiver slot in the SDP.
     if (streamingStatus?.isVideoEnabled) {
-      pc.addTransceiver('video', { direction: 'recvonly' });
+      pc.addTransceiver("video", { direction: "recvonly" });
     }
     if (streamingStatus?.isScreenSharing) {
-      pc.addTransceiver('video', { direction: 'recvonly' });
+      pc.addTransceiver("video", { direction: "recvonly" });
     }
 
     pc.ontrack = (e) => {
-      console.log("[WebRTC] ontrack from", remoteId, "kind:", e.track.kind, "streamId:", e.streams?.[0]?.id);
+      console.log(
+        "[WebRTC] ontrack from",
+        remoteId,
+        "kind:",
+        e.track.kind,
+        "streamId:",
+        e.streams?.[0]?.id,
+      );
       let stream = participant.stream;
       if (!stream) {
         stream = e.streams?.[0] ?? new MediaStream();
@@ -257,20 +290,24 @@ export function useVoiceRoom() {
         stream.addTrack(e.track);
         participant.stream = new MediaStream(stream.getTracks());
       }
-      
+
       trackSpeaking(remoteId, participant.stream!);
-      
-      if (e.track.kind === 'audio' && !participant.audioElement) {
+
+      if (e.track.kind === "audio" && !participant.audioElement) {
         const audioEl = new Audio();
         audioEl.autoplay = true;
         audioEl.setAttribute("playsinline", "true");
         audioEl.srcObject = stream;
         audioEl.volume = (isTotalMuted.value ? 0 : getVolume(remoteId)) / 100;
         document.body.appendChild(audioEl);
-        audioEl.play().catch((err) => console.warn("[WebRTC] audio play failed for", remoteId, err));
+        audioEl
+          .play()
+          .catch((err) =>
+            console.warn("[WebRTC] audio play failed for", remoteId, err),
+          );
         participant.audioElement = audioEl;
       }
-      
+
       participants.value = new Map(participants.value);
     };
 
@@ -309,7 +346,7 @@ export function useVoiceRoom() {
     // try {
     //   // Calling the REST API TO fetch the TURN Server Credentials
     //   const response = await fetch("https://jamal_4_fun.metered.live/api/v1/turn/credentials?apiKey=4fcbcce99bf52f2cf449625475c0eb849f0d");
-      
+
     //   // Saving the response in the iceServers array
     //   currentIceServers.value = await response.json();
     // } catch (err) {
@@ -317,8 +354,8 @@ export function useVoiceRoom() {
     // }
 
     // Web Audio API has been removed, so no suspended context to resume here
-    // Safari might still require a user gesture to play audio tracks, but the tracks 
-    // arrive asynchronously and our dummy audio is attached dynamically. 
+    // Safari might still require a user gesture to play audio tracks, but the tracks
+    // arrive asynchronously and our dummy audio is attached dynamically.
     // Autoplay policy usually allows play() if the document has received a user gesture (like the join button click).
 
     const s = io(getSocketUrl());
@@ -333,7 +370,11 @@ export function useVoiceRoom() {
         messages: roomMessages,
       }: {
         yourId: string;
-        participants: { id: string; userName: string; streaming: { isVideoEnabled: boolean; isScreenSharing: boolean } }[];
+        participants: {
+          id: string;
+          userName: string;
+          streaming: { isVideoEnabled: boolean; isScreenSharing: boolean };
+        }[];
         volumeKing?: { id: string; name: string; maxVolume: number } | null;
         messages: ChatMessage[];
       }) => {
@@ -378,17 +419,29 @@ export function useVoiceRoom() {
       },
     );
 
-    s.on("streaming-status-updated", ({ id, streaming }: { id: string, streaming: { isVideoEnabled: boolean, isScreenSharing: boolean } }) => {
-      const p = participants.value.get(id);
-      if (p) {
-        p.streaming = streaming;
-        participants.value = new Map(participants.value);
-      }
-    });
+    s.on(
+      "streaming-status-updated",
+      ({
+        id,
+        streaming,
+      }: {
+        id: string;
+        streaming: { isVideoEnabled: boolean; isScreenSharing: boolean };
+      }) => {
+        const p = participants.value.get(id);
+        if (p) {
+          p.streaming = streaming;
+          participants.value = new Map(participants.value);
+        }
+      },
+    );
 
-    s.on("volume-king-updated", (newKing: { id: string; name: string; maxVolume: number } | null) => {
-      volumeKing.value = newKing;
-    });
+    s.on(
+      "volume-king-updated",
+      (newKing: { id: string; name: string; maxVolume: number } | null) => {
+        volumeKing.value = newKing;
+      },
+    );
 
     s.on("new-message", (msg: ChatMessage) => {
       messages.value.push(msg);
@@ -469,7 +522,12 @@ export function useVoiceRoom() {
           queue.push(candidate);
           iceCandidateQueues.value.set(remoteId, queue);
           iceCandidateQueues.value = new Map(iceCandidateQueues.value);
-          console.log("[WebRTC] ICE candidate queued for", remoteId, "queue size:", queue.length);
+          console.log(
+            "[WebRTC] ICE candidate queued for",
+            remoteId,
+            "queue size:",
+            queue.length,
+          );
           return;
         }
         try {
@@ -529,7 +587,7 @@ export function useVoiceRoom() {
     if (!isMuted.value && isTotalMuted.value) {
       isTotalMuted.value = false;
       localStorage.setItem("isTotalMuted", "false");
-      
+
       // Восстанавливаем громкость всех участников
       participants.value.forEach((p, id) => {
         if (p.audioElement) {
@@ -576,16 +634,27 @@ export function useVoiceRoom() {
       }
       updateStreamingStatus();
       for (const [remoteId, pc] of peerConnections.value) {
-        const sender = pc.getSenders().find(s => s.track === cameraTrack.value);
+        const sender = pc
+          .getSenders()
+          .find((s) => s.track === cameraTrack.value);
         if (sender) pc.removeTrack(sender);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
+        socket.value?.emit("offer", {
+          to: remoteId,
+          offer,
+          streaming: {
+            isVideoEnabled: isVideoEnabled.value,
+            isScreenSharing: isScreenSharing.value,
+          },
+        });
       }
       cameraTrack.value = null;
     } else {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         const track = stream.getVideoTracks()[0];
         if (!track) throw new Error("No video track");
         isVideoEnabled.value = true;
@@ -598,7 +667,14 @@ export function useVoiceRoom() {
           pc.addTrack(track, myStream.value);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
+          socket.value?.emit("offer", {
+            to: remoteId,
+            offer,
+            streaming: {
+              isVideoEnabled: isVideoEnabled.value,
+              isScreenSharing: isScreenSharing.value,
+            },
+          });
         }
       } catch (err) {
         console.error("[WebRTC] Failed to get video track", err);
@@ -617,22 +693,34 @@ export function useVoiceRoom() {
       }
       updateStreamingStatus();
       for (const [remoteId, pc] of peerConnections.value) {
-        const sender = pc.getSenders().find(s => s.track === screenTrack.value);
+        const sender = pc
+          .getSenders()
+          .find((s) => s.track === screenTrack.value);
         if (sender) pc.removeTrack(sender);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
+        socket.value?.emit("offer", {
+          to: remoteId,
+          offer,
+          streaming: {
+            isVideoEnabled: isVideoEnabled.value,
+            isScreenSharing: isScreenSharing.value,
+          },
+        });
       }
       screenTrack.value = null;
     } else {
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false,
+        });
         const track = stream.getVideoTracks()[0];
         if (!track) throw new Error("No screen track");
-        
+
         isScreenSharing.value = true;
         screenTrack.value = track;
-        
+
         // Handle native browser "Stop sharing" button
         track.onended = () => {
           if (isScreenSharing.value) {
@@ -646,12 +734,19 @@ export function useVoiceRoom() {
         myStream.value.addTrack(track);
         myStream.value = new MediaStream(myStream.value.getTracks());
         updateStreamingStatus();
-        
+
         for (const [remoteId, pc] of peerConnections.value) {
           pc.addTrack(track, myStream.value);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          socket.value?.emit("offer", { to: remoteId, offer, streaming: { isVideoEnabled: isVideoEnabled.value, isScreenSharing: isScreenSharing.value } });
+          socket.value?.emit("offer", {
+            to: remoteId,
+            offer,
+            streaming: {
+              isVideoEnabled: isVideoEnabled.value,
+              isScreenSharing: isScreenSharing.value,
+            },
+          });
         }
       } catch (err) {
         console.error("[WebRTC] Failed to get screen share", err);
@@ -672,7 +767,10 @@ export function useVoiceRoom() {
             echoCancellation: isNoiseSuppressionEnabled.value,
           });
         } catch (err) {
-          console.error("[WebRTC] Failed to apply noise suppression constraints", err);
+          console.error(
+            "[WebRTC] Failed to apply noise suppression constraints",
+            err,
+          );
         }
       });
     }
