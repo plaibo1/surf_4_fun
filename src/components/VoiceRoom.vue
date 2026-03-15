@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import { useVoiceRoom } from '@/composables/useVoiceRoom'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
@@ -43,6 +43,11 @@ const {
   messages,
   sendMessage,
 } = useVoiceRoom()
+
+const hasStreams = computed(() => 
+  (myStream.value?.getVideoTracks()?.length ?? 0) > 0 || 
+  participants.value.some(p => (p.stream?.getVideoTracks()?.length ?? 0) > 0)
+)
 
 const newMessage = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
@@ -158,9 +163,15 @@ function toggleFullscreen(event: Event) {
 </script>
 
 <template>
-  <div class="w-full max-w-[1600px] mx-auto flex flex-col xl:flex-row gap-6 p-4">
+  <div 
+    class="w-full mx-auto flex flex-col gap-6 p-4 transition-all duration-700"
+    :class="hasStreams ? 'max-w-[1600px] xl:flex-row' : 'max-w-2xl items-center'"
+  >
     <!-- Левая колонка: Управление и Чат -->
-    <div class="w-full xl:w-[700px] space-y-6 shrink-0 order-2 xl:order-1">
+    <div 
+      class="w-full space-y-6 shrink-0 transition-all duration-700"
+      :class="hasStreams ? 'xl:w-[550px] order-2 xl:order-1' : ''"
+    >
       <!-- Главная панель комнаты -->
       <Card class="overflow-hidden border-none shadow-xl bg-gradient-to-br from-card to-muted/30">
         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
@@ -243,7 +254,7 @@ function toggleFullscreen(event: Event) {
                   class="w-10 h-10 rounded-full bg-yellow-500 text-yellow-950 flex items-center justify-center text-lg font-black shadow-lg shadow-yellow-500/20">
                   {{ volumeKing.name.charAt(0).toUpperCase() }}
                 </div>
-                <div class="absolute -top-4 -right-2 text-2xl drop-shadow-md animate-bounce duration-1000">👑</div>
+                <div class="absolute -top-4 -right-2 text-2xl drop-shadow-md">👑</div>
               </div>
               <div>
                 <p class="text-[10px] font-black uppercase tracking-widest text-yellow-600/80">Current Volume King</p>
@@ -259,7 +270,6 @@ function toggleFullscreen(event: Event) {
 
       <!-- Моя карточка -->
       <Card class="border-primary/30 bg-primary/5 shadow-lg shadow-primary/5 relative overflow-hidden">
-        <div v-if="isLocalSpeaking" class="absolute inset-0 bg-green-500/5 animate-pulse pointer-events-none"></div>
         <CardContent class="p-4 flex flex-col items-center justify-between gap-6 relative z-10">
           <div class="flex items-center gap-4 w-full">
             <div class="relative group">
@@ -286,11 +296,11 @@ function toggleFullscreen(event: Event) {
               </div>
               <p class="text-sm font-medium flex items-center gap-2 mt-0.5">
                 <span v-if="isMuted" class="text-destructive flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-destructive"></span>
                   Микрофон выключен
                 </span>
                 <span v-else class="text-green-500 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-bounce"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                   Вас слышно
                 </span>
               </p>
@@ -437,14 +447,12 @@ function toggleFullscreen(event: Event) {
       </Card>
     </div>
 
-    <!-- Правая колонка: Видеопотоки -->
-    <div class="flex-1 min-w-0 order-1 xl:order-2 space-y-6">
-      <Card
-        v-if="myStream?.getVideoTracks()?.length || participants.some(p => p.stream && p.stream.getVideoTracks().length)"
-        class="border-none bg-black/5 dark:bg-white/5 shadow-2xl overflow-hidden h-fit">
+    <!-- Правая колонка: Видеопотоки (только если есть стримы) -->
+    <div v-if="hasStreams" class="flex-1 min-w-0 order-1 xl:order-2 space-y-6 animate-in slide-in-from-right-10 duration-700">
+      <Card class="border-none bg-black/5 dark:bg-white/5 shadow-2xl overflow-hidden h-fit">
         <CardHeader class="flex flex-row items-center justify-between border-b border-primary/5 pb-4">
           <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+            <div class="w-2 h-2 rounded-full bg-red-500"></div>
             <CardTitle class="text-xl font-black uppercase tracking-tighter">Live Streams</CardTitle>
           </div>
 
@@ -462,7 +470,7 @@ function toggleFullscreen(event: Event) {
 
         <CardContent class="p-4 transition-all duration-500"
           :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-4'">
-          <!-- Видеопотоки (те же, что и раньше) -->
+          <!-- Видеопотоки -->
           <template v-if="myStream">
             <div v-for="track in myStream.getVideoTracks()" :key="track.id"
               class="relative group rounded-2xl overflow-hidden bg-zinc-900 aspect-video border-2 transition-all duration-500"
@@ -476,7 +484,7 @@ function toggleFullscreen(event: Event) {
               <div class="absolute top-3 left-3 flex items-center gap-2">
                 <div
                   class="bg-primary/20 backdrop-blur-md border border-white/10 px-2 py-0.5 rounded-lg flex items-center gap-1.5">
-                  <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                  <div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
                   <span class="text-[9px] font-black text-white uppercase tracking-tighter">You</span>
                 </div>
               </div>
@@ -536,20 +544,6 @@ function toggleFullscreen(event: Event) {
           </template>
         </CardContent>
       </Card>
-
-      <!-- Если никого нет в видеочате, но мы в комнате -->
-      <div v-else-if="participants.length === 0"
-        class="py-24 flex flex-col items-center justify-center text-center space-y-6 opacity-50 bg-muted/5 rounded-[40px] border-4 border-dashed border-muted">
-        <div
-          class="relative w-32 h-32 bg-primary/5 rounded-full flex items-center justify-center border border-primary/10">
-          <Ghost class="h-16 w-16 text-primary/20" />
-        </div>
-        <div class="space-y-2">
-          <h3 class="font-black text-2xl uppercase tracking-tighter italic text-muted-foreground">Кинотеатр пуст</h3>
-          <p class="text-sm font-medium text-muted-foreground max-w-[300px]">Здесь появятся видеопотоки, когда кто-то
-            включит камеру или экран.</p>
-        </div>
-      </div>
     </div>
   </div>
 </template>
