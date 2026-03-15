@@ -2,6 +2,7 @@ import { ref, computed, onUnmounted } from "vue";
 import { io } from "socket.io-client";
 import hark from "hark";
 import { useVolumeStorage } from "./useVolumeStorage";
+import { useSoundEffects } from "./useSoundEffects";
 
 function getSocketUrl(): string {
   // В dev используем тот же origin — Vite проксирует /socket.io на бэкенд (избегаем SSL на порту 8000)
@@ -30,6 +31,7 @@ export interface ChatMessage {
 
 export function useVoiceRoom() {
   const { saveVolume, getVolume: getStorageVolume } = useVolumeStorage();
+  const { playJoinSound, playLeaveSound, initAudioContext } = useSoundEffects();
   const socket = ref<ReturnType<typeof io> | null>(null);
   const myId = ref<string | null>(null);
   const myStream = ref<MediaStream | null>(null);
@@ -336,6 +338,7 @@ export function useVoiceRoom() {
     userName.value = uName;
     roomFull.value = false;
     error.value = null;
+    initAudioContext();
     try {
       await getLocalStream();
     } catch (e) {
@@ -380,6 +383,7 @@ export function useVoiceRoom() {
       }) => {
         myId.value = yourId;
         isConnected.value = true;
+        playJoinSound();
         messages.value = roomMessages || [];
         if (roomKing) {
           volumeKing.value = roomKing;
@@ -415,6 +419,7 @@ export function useVoiceRoom() {
         streaming: { isVideoEnabled: boolean; isScreenSharing: boolean };
       }) => {
         peerVolumes.value[remoteId] = 100;
+        playJoinSound();
         createPeerConnection(remoteId, remoteName, remoteStreaming);
       },
     );
@@ -449,6 +454,7 @@ export function useVoiceRoom() {
 
     s.on("participant-left", ({ id: remoteId }: { id: string }) => {
       const p = participants.value.get(remoteId);
+      playLeaveSound();
       if (p?.audioElement) {
         p.audioElement.pause();
         p.audioElement.srcObject = null;
