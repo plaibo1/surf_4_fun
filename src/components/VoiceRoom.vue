@@ -112,7 +112,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Maximize, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, UserPlus } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, UserPlus, Scan } from 'lucide-vue-next'
 
 
 const vStream = {
@@ -309,30 +309,95 @@ function toggleFullscreen(event: Event) {
       </CardContent>
     </Card>
 
-    <Card v-if="myStream?.getVideoTracks()?.length || participants.some(p => p.stream && p.stream.getVideoTracks().length)">
-      <CardHeader>
-        <CardTitle>Видеочат</CardTitle>
+    <!-- Секция Видеочата: Cinematic Mosaic -->
+    <Card v-if="myStream?.getVideoTracks()?.length || participants.some(p => p.stream && p.stream.getVideoTracks().length)" class="border-none bg-black/5 dark:bg-white/5 shadow-2xl overflow-hidden">
+      <CardHeader class="flex flex-row items-center justify-between border-b border-primary/5 pb-4">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+          <CardTitle class="text-xl font-black uppercase tracking-tighter">Live Streams</CardTitle>
+        </div>
+        <div class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded-md">
+          Grid View
+        </div>
       </CardHeader>
-      <CardContent class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Я -->
+      
+      <CardContent class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+        <!-- Я (Self View) -->
         <template v-if="myStream">
-          <div v-for="track in myStream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center" @dblclick="toggleFullscreen">
-            <video v-stream="createStream(track)" autoplay playsinline muted class="w-full h-full object-cover"></video>
-            <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ userName }} (Вы)</div>
-            <button @click.stop="toggleFullscreen" class="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity" title="На весь экран">
-              <Maximize class="w-4 h-4" />
-            </button>
+          <div 
+            v-for="track in myStream.getVideoTracks()" 
+            :key="track.id" 
+            class="relative group rounded-2xl overflow-hidden bg-zinc-900 aspect-video flex items-center justify-center transition-all duration-500 border-2 shadow-lg"
+            :class="isLocalSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-primary/10'"
+            @dblclick="toggleFullscreen"
+          >
+            <video v-stream="createStream(track)" autoplay playsinline muted class="w-full h-full object-cover scale-[1.01] grayscale-[0.2] group-hover:grayscale-0 transition-all duration-700"></video>
+            
+            <!-- Оверлей управления и информации -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-60 group-hover:opacity-100 transition-opacity"></div>
+            
+            <!-- Верхний бадж -->
+            <div class="absolute top-3 left-3 flex items-center gap-2">
+              <div class="bg-primary/20 backdrop-blur-md border border-white/10 px-2 py-0.5 rounded-lg flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                <span class="text-[9px] font-black text-white uppercase tracking-tighter">You</span>
+              </div>
+            </div>
+
+            <!-- Нижний бадж (Имя и статус) -->
+            <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+              <div class="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-3 py-1.5 rounded-xl">
+                <span class="text-xs font-bold text-white truncate max-w-[100px]">{{ userName }}</span>
+                <div class="flex items-center gap-1 border-l border-white/20 pl-2 ml-1">
+                  <MicOff v-if="isMuted" class="h-3 w-3 text-red-400" />
+                  <Mic v-else class="h-3 w-3 text-green-400" />
+                </div>
+              </div>
+              
+              <button @click.stop="toggleFullscreen" class="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                <Scan class="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </template>
-        <!-- Другие -->
+
+        <!-- Другие участники -->
         <template v-for="p in participants" :key="p.id">
           <template v-if="p.stream">
-            <div v-for="track in p.stream.getVideoTracks()" :key="track.id" class="relative group rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center" @dblclick="toggleFullscreen">
-              <video v-stream="createStream(track)" autoplay playsinline class="w-full h-full object-cover"></video>
-              <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{{ p.userName }}</div>
-              <button @click.stop="toggleFullscreen" class="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity" title="На весь экран">
-                <Maximize class="w-4 h-4" />
-              </button>
+            <div 
+              v-for="track in p.stream.getVideoTracks()" 
+              :key="track.id" 
+              class="relative group rounded-2xl overflow-hidden bg-zinc-900 aspect-video flex items-center justify-center transition-all duration-500 border-2 shadow-lg"
+              :class="p.isSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-white/5 hover:border-primary/30'"
+              @dblclick="toggleFullscreen"
+            >
+              <video v-stream="createStream(track)" autoplay playsinline class="w-full h-full object-cover scale-[1.01] transition-all duration-700"></video>
+              
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-40 group-hover:opacity-90 transition-opacity"></div>
+
+              <!-- Верхний бадж (Live) -->
+              <div class="absolute top-3 left-3">
+                <div class="bg-red-500/20 backdrop-blur-md border border-red-500/30 px-2 py-0.5 rounded-lg flex items-center gap-1.5">
+                  <div class="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+                  <span class="text-[9px] font-black text-white uppercase tracking-tighter">Live</span>
+                </div>
+              </div>
+
+              <!-- Инфо бадж -->
+              <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                <div class="flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 px-3 py-1.5 rounded-xl shadow-2xl">
+                  <span class="text-xs font-bold text-white truncate max-w-[120px]">{{ p.userName }}</span>
+                  <!-- Иконка типа стрима (Camera/Screen) -->
+                  <div class="flex items-center border-l border-white/20 pl-2 ml-1">
+                    <Monitor v-if="track.label.toLowerCase().includes('screen') || track.label.toLowerCase().includes('window')" class="h-3 w-3 text-primary" />
+                    <Video v-else class="h-3 w-3 text-white/60" />
+                  </div>
+                </div>
+
+                <button @click.stop="toggleFullscreen" class="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <Scan class="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </template>
         </template>
