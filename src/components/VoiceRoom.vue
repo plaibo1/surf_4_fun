@@ -46,6 +46,7 @@ const {
 
 const newMessage = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
+const viewMode = ref<'grid' | 'row'>('grid')
 
 watch(
   () => messages.value.length,
@@ -112,7 +113,7 @@ function onLeave() {
 
 // custom directive to bind MediaStream easily
 import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, UserPlus, Scan } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, UserPlus, Scan, LayoutGrid, LayoutList } from 'lucide-vue-next'
 
 
 const vStream = {
@@ -316,12 +317,37 @@ function toggleFullscreen(event: Event) {
           <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
           <CardTitle class="text-xl font-black uppercase tracking-tighter">Live Streams</CardTitle>
         </div>
-        <div class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded-md">
-          Grid View
+        
+        <div class="flex items-center bg-muted/50 p-1 rounded-xl border border-border/50">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            class="h-8 w-8 rounded-lg transition-all"
+            :class="{ 'bg-background shadow-sm text-primary': viewMode === 'grid' }"
+            @click="viewMode = 'grid'"
+            title="Grid View"
+          >
+            <LayoutGrid class="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            class="h-8 w-8 rounded-lg transition-all"
+            :class="{ 'bg-background shadow-sm text-primary': viewMode === 'row' }"
+            @click="viewMode = 'row'"
+            title="Row View"
+          >
+            <LayoutList class="h-4 w-4" />
+          </Button>
         </div>
       </CardHeader>
       
-      <CardContent class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+      <CardContent 
+        class="p-4 transition-all duration-500"
+        :class="viewMode === 'grid' 
+          ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr' 
+          : 'flex flex-col gap-4'"
+      >
         <!-- Я (Self View) -->
         <template v-if="myStream">
           <div 
