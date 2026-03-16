@@ -9,7 +9,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 
 const props = defineProps<{
@@ -84,15 +84,36 @@ async function onSendMessage() {
   scrollToBottom()
 }
 
+function handleLinkClick(part: any) {
+  if (part.isCS && part.ip) {
+    window.location.href = `steam://connect/${part.ip}`
+  } else {
+    copyToClipboard(part.text)
+  }
+}
+
 function parseMessage(text: string) {
   if (!text) return [];
-  const regex = /(https?:\/\/[^\s]+|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}\b)/;
+  // Регулярка для ссылок и IP (с префиксом connect или без)
+  const regex = /(https?:\/\/[^\s]+|(?:connect\s+)?\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d{1,5})?\b)/gi;
   const parts = text.split(regex);
-  return parts.map((part, index) => ({
-    id: index,
-    isLink: /^https?:\/\//.test(part) || /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}$/.test(part),
-    text: part
-  })).filter(p => p.text);
+  
+  return parts.map((part, index) => {
+    if (!part) return null;
+    
+    const isUrl = /^https?:\/\//i.test(part);
+    // Это CS ссылка только если это НЕ URL и содержит паттерн IP
+    const isCS = !isUrl && /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d{1,5})?\b/i.test(part);
+
+    return {
+      id: index,
+      isLink: isUrl || isCS,
+      isCS: isCS,
+      text: part,
+      // Чистый IP для steam://connect/
+      ip: isCS ? part.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d{1,5})?\b/)?.[0] : null
+    };
+  }).filter((p): p is any => !!(p && p.text));
 }
 
 const copiedLink = ref<string | null>(null);
@@ -453,9 +474,14 @@ onUnmounted(() => {
                   <template v-for="part in parseMessage(msg.text)" :key="part.id">
                     <span v-if="part.isLink" 
                       class="inline-flex items-center gap-1.5 align-middle bg-black/10 dark:bg-white/5 px-1.5 py-0.5 rounded-lg cursor-pointer group/link transition-all hover:bg-black/20 dark:hover:bg-white/10 active:scale-95"
-                      @click="copyToClipboard(part.text)">
-                      <Check v-if="copiedLink === part.text" class="h-3 w-3 text-green-400 shrink-0" />
-                      <Copy v-else class="h-3 w-3 opacity-40 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                      @click="handleLinkClick(part)">
+                      <template v-if="part.isCS">
+                        <Swords class="h-3 w-3 text-orange-400 shrink-0" />
+                      </template>
+                      <template v-else>
+                        <Check v-if="copiedLink === part.text" class="h-3 w-3 text-green-400 shrink-0" />
+                        <Copy v-else class="h-3 w-3 opacity-40 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                      </template>
                       <span
                         class="underline underline-offset-2 transition-all font-bold select-none truncate max-w-[180px]"
                         :class="msg.senderId === myId ? 'text-white' : 'text-primary'">{{ part.text }}</span>
