@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue'
 import { useVoiceRoom } from '@/composables/useVoiceRoom'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
@@ -8,6 +8,8 @@ import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
+import type { DirectiveBinding } from 'vue'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList } from 'lucide-vue-next'
 
 const props = defineProps<{
   roomId: string
@@ -78,7 +80,6 @@ async function onSendMessage() {
 
 function parseMessage(text: string) {
   if (!text) return [];
-  // Разделяем по ссылкам (http(s)://... или ip-адреса с портом X.X.X.X:PORT)
   const regex = /(https?:\/\/[^\s]+|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}\b)/;
   const parts = text.split(regex);
   return parts.map((part, index) => ({
@@ -116,11 +117,6 @@ function onLeave() {
   leave()
   emit('leave')
 }
-
-// custom directive to bind MediaStream easily
-import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList } from 'lucide-vue-next'
-
 
 const vStream = {
   mounted(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
@@ -161,6 +157,32 @@ function toggleFullscreen(event: Event) {
     document.exitFullscreen();
   }
 }
+
+function handleKeyDown(event: KeyboardEvent) {
+  const activeElement = document.activeElement;
+  const isInput = activeElement instanceof HTMLInputElement ||
+    activeElement instanceof HTMLTextAreaElement ||
+    (activeElement as HTMLElement)?.isContentEditable;
+
+  if (isInput) return;
+
+  if (event.code === 'KeyM' || event.key.toLowerCase() === 'm') {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      toggleTotalMute();
+    } else {
+      toggleMute();
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+});
 </script>
 
 <template>
