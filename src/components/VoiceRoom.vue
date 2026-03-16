@@ -9,7 +9,8 @@ import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star } from 'lucide-vue-next'
+import { useFavorites } from '@/composables/useFavorites'
 
 const props = defineProps<{
   roomId: string
@@ -17,6 +18,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ leave: [] }>()
+
+const {
+  toggleFavorite,
+  isFavorite
+} = useFavorites()
 
 const {
   myId,
@@ -205,6 +211,11 @@ onUnmounted(() => {
                 @click="copyToClipboard(roomId)">
                 <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-500" />
                 <Copy v-else class="h-4 w-4 text-muted-foreground" />
+              </Button>
+
+              <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:bg-yellow-500/10 transition-all group/star"
+                @click="toggleFavorite(roomId)">
+                <Star class="h-4 w-4 transition-all" :class="isFavorite(roomId) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground group-hover/star:text-yellow-500'" />
               </Button>
 
               <div
