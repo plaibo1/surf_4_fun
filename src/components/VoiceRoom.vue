@@ -451,10 +451,14 @@ onUnmounted(() => {
                 :class="msg.senderId === myId ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-card border border-border/50 text-foreground rounded-tl-none'">
                 <div class="text-xs font-medium leading-relaxed whitespace-pre-wrap">
                   <template v-for="part in parseMessage(msg.text)" :key="part.id">
-                    <span v-if="part.isLink" class="inline-flex items-center gap-1 align-bottom">
-                      <span @click="copyToClipboard(part.text)"
-                        class="underline underline-offset-2 transition-all font-bold cursor-pointer select-none hover:text-white"
-                        :class="msg.senderId === myId ? '' : 'text-primary'">{{ part.text }}</span>
+                    <span v-if="part.isLink" 
+                      class="inline-flex items-center gap-1.5 align-middle bg-black/10 dark:bg-white/5 px-1.5 py-0.5 rounded-lg cursor-pointer group/link transition-all hover:bg-black/20 dark:hover:bg-white/10 active:scale-95"
+                      @click="copyToClipboard(part.text)">
+                      <Check v-if="copiedLink === part.text" class="h-3 w-3 text-green-400 shrink-0" />
+                      <Copy v-else class="h-3 w-3 opacity-40 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                      <span
+                        class="underline underline-offset-2 transition-all font-bold select-none truncate max-w-[180px]"
+                        :class="msg.senderId === myId ? 'text-white' : 'text-primary'">{{ part.text }}</span>
                     </span>
                     <span v-else>{{ part.text }}</span>
                   </template>
