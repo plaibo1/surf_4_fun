@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Card from '@/components/ui/card/Card.vue'
@@ -12,6 +12,7 @@ import { useFavorites } from '@/composables/useFavorites'
 const { favorites } = useFavorites()
 const roomId = ref('')
 const userName = ref('')
+const userNameInput = ref<{ input: HTMLInputElement } | null>(null)
 const emit = defineEmits<{ joined: [roomId: string, userName: string] }>()
 
 const placeholders = [
@@ -35,6 +36,13 @@ onMounted(() => {
   // Auto-connect if both are present
   if (roomId.value && userName.value) {
     onSubmit()
+  } else {
+    // Focus if name is missing
+    nextTick(() => {
+      if (userNameInput.value?.input) {
+        userNameInput.value.input.focus()
+      }
+    })
   }
 })
 
@@ -79,17 +87,21 @@ function onSubmit() {
 
       <CardContent class="px-8 pb-10 space-y-6">
         <!-- Поле Имя -->
-        <div class="space-y-0">
-          <label class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5">Как
-            тебя зовут?</label>
+        <div class="space-y-0 relative">
+          <label class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5"
+            :class="{ 'text-primary animate-pulse': roomId && !userName }">
+            Как тебя зовут?
+            <span v-if="roomId && !userName" class="text-primary italic">— Напиши свой ник!</span>
+          </label>
           <div class="relative group">
             <div
               class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
               <User class="h-5 w-5" />
             </div>
-            <Input v-model="userName" :placeholder="`Например: ${randomPlaceholder}`"
+            <Input ref="userNameInput" v-model="userName" :placeholder="`Например: ${randomPlaceholder}`"
               class="h-14 pl-12 pr-4 rounded-2xl border-none bg-background/50 shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-base font-bold"
-              maxlength="20" @keyup.enter="onSubmit" />
+              :class="{ 'ring-2 ring-primary/40 bg-primary/5': roomId && !userName }" maxlength="20"
+              @keyup.enter="onSubmit" />
           </div>
           <p class="text-[9px] text-muted-foreground/40 mt-1 ml-1 font-bold uppercase tracking-tighter">Макс. 20
             символов</p>
@@ -141,7 +153,12 @@ function onSubmit() {
         <Button
           class="w-full h-16 rounded-2xl text-lg font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] group cursor-pointer"
           @click="onSubmit" :disabled="!roomId.trim() || !userName.trim()">
-          Войти
+          <template v-if="roomId.trim() && !userName.trim()">
+            Напиши ник
+          </template>
+          <template v-else>
+            Войти
+          </template>
           <ArrowRight class="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
         </Button>
       </CardContent>
