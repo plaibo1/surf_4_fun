@@ -26,7 +26,7 @@ function onLeave() {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="min-h-screen flex flex-col items-center justify-center px-2 py-6 sm:p-4">
     <JoinForm v-if="!inRoom" @joined="onJoined" />
     <VoiceRoom
       v-else

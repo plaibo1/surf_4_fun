@@ -68,14 +68,14 @@ function onSubmit() {
 <template>
   <div class="w-full max-w-md animate-in fade-in zoom-in duration-500 relative">
     <Card class="border-none shadow-2xl bg-gradient-to-br from-card to-muted/30 overflow-hidden relative z-10">
-      <CardHeader class="pt-10 pb-6 text-center">
+      <CardHeader class="pt-8 sm:pt-10 pb-4 sm:pb-6 text-center">
         <div
-          class="mx-auto w-24 h-24 bg-primary/5 rounded-3xl flex items-center justify-center mb-6 ring-1 ring-primary/10 shadow-2xl overflow-hidden">
+          class="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 sm:mb-6 ring-1 ring-primary/10 shadow-2xl overflow-hidden">
           <img src="/logo.webp" alt="Surf 4 Fun Logo"
             class="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500" />
         </div>
         <div class="relative inline-block mx-auto">
-          <CardTitle class="text-4xl font-black tracking-tighter text-foreground uppercase">
+          <CardTitle class="text-3xl sm:text-4xl font-black tracking-tighter text-foreground uppercase">
             Surf 4 Fun
           </CardTitle>
           <span
@@ -85,7 +85,7 @@ function onSubmit() {
         </div>
       </CardHeader>
 
-      <CardContent class="px-8 pb-10 space-y-6">
+      <CardContent class="px-4 sm:px-8 pb-10 space-y-6">
         <!-- Поле Имя -->
         <div class="space-y-0 relative">
           <label class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5"
