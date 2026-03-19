@@ -152,23 +152,23 @@ const vStream = {
   updated(el: HTMLVideoElement, binding: DirectiveBinding<MediaStream | undefined | null>) {
     const currentStream = el.srcObject as MediaStream | null;
     const newStream = binding.value as MediaStream | null;
-    if (!currentStream && !newStream) return;
-    if (!currentStream || !newStream) {
-      el.srcObject = newStream ?? null;
-      return;
-    }
-    const currentTracks = currentStream.getTracks();
-    const newTracks = newStream.getTracks();
-    if (currentTracks.length !== newTracks.length || currentTracks.some((t, i) => t !== newTracks[i])) {
-      el.srcObject = newStream;
-    }
+    if (currentStream === newStream) return;
+    el.srcObject = newStream ?? null;
+  },
+  unmounted(el: HTMLVideoElement) {
+    el.srcObject = null;
   }
 }
 
-const createStream = (track: MediaStreamTrack) => {
-  const s = new MediaStream()
-  s.addTrack(track)
-  return s
+const streamCache = new WeakMap<MediaStreamTrack, MediaStream>();
+
+const getOrCreateStream = (track: MediaStreamTrack) => {
+  let s = streamCache.get(track);
+  if (!s) {
+    s = new MediaStream([track]);
+    streamCache.set(track, s);
+  }
+  return s;
 }
 
 function toggleFullscreen(event: Event) {
@@ -561,7 +561,7 @@ onUnmounted(() => {
               class="relative group rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-900 aspect-video border-2 transition-all duration-500"
               :class="isLocalSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-primary/10'"
               @dblclick="toggleFullscreen">
-              <video v-stream="createStream(track)" autoplay playsinline muted
+              <video v-stream="getOrCreateStream(track)" autoplay playsinline muted
                 class="w-full h-full object-cover scale-[1.01] transition-all duration-700"></video>
               <div
                 class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-60 group-hover:opacity-100 transition-opacity">
@@ -598,7 +598,7 @@ onUnmounted(() => {
                 class="relative group rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-900 aspect-video border-2 transition-all duration-500"
                 :class="p.isSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-white/5'"
                 @dblclick="toggleFullscreen">
-                <video v-stream="createStream(track)" autoplay playsinline
+                <video v-stream="getOrCreateStream(track)" autoplay playsinline
                   class="w-full h-full object-cover scale-[1.01] transition-all duration-700"></video>
                 <div
                   class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-40 group-hover:opacity-90 transition-opacity">
