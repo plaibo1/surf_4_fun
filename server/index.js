@@ -30,6 +30,8 @@ const roomVolumeKings = new Map()
 const roomMessages = new Map()
 // Track streaming status for each socket id: { isVideoEnabled: boolean, isScreenSharing: boolean }
 const streamingStatuses = new Map()
+// SyncTube state: { url: string, playing: boolean, currentTime: number, lastUpdate: number }
+const roomSyncTubeStates = new Map()
 
 io.on('connection', (socket) => {
   socket.on('join-room', async ({ roomId, userName }) => {
@@ -58,13 +60,46 @@ io.on('connection', (socket) => {
 
     const currentKing = roomVolumeKings.get(roomId)
     const messages = roomMessages.get(roomId) || []
+    const syncTubeState = roomSyncTubeStates.get(roomId)
     
-    socket.emit('joined', { yourId: socket.id, participants, volumeKing: currentKing, messages })
+    socket.emit('joined', { 
+      yourId: socket.id, 
+      participants, 
+      volumeKing: currentKing, 
+      messages,
+      syncTubeState 
+    })
     socket.to(roomId).emit('participant-joined', { 
       id: socket.id, 
       userName: socket.userName,
       streaming: { isVideoEnabled: false, isScreenSharing: false }
     })
+  })
+
+  // SyncTube Events
+  socket.on('synctube-command', ({ roomId, command }) => {
+    // command: { type: 'load'|'play'|'pause'|'seek', url?, currentTime? }
+    let state = roomSyncTubeStates.get(roomId) || { url: null, playing: false, currentTime: 0, lastUpdate: Date.now() }
+    
+    if (command.type === 'load') {
+      state.url = command.url
+      state.playing = false
+      state.currentTime = 0
+    } else if (command.type === 'play') {
+      state.playing = true
+      state.currentTime = command.currentTime
+    } else if (command.type === 'pause') {
+      state.playing = false
+      state.currentTime = command.currentTime
+    } else if (command.type === 'seek') {
+      state.currentTime = command.currentTime
+    }
+    
+    state.lastUpdate = Date.now()
+    roomSyncTubeStates.set(roomId, state)
+    
+    // Broadcast to everyone in room including sender (to keep everyone in sync)
+    io.to(roomId).emit('synctube-state-update', state)
   })
 
   socket.on('update-streaming-status', ({ isVideoEnabled, isScreenSharing }) => {

@@ -7,8 +7,11 @@ export function useSoundEffects() {
     if (!audioContext.value) {
       audioContext.value = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+    
     if (audioContext.value.state === 'suspended') {
-      audioContext.value.resume();
+      audioContext.value.resume().catch(err => {
+        console.warn('AudioContext resume failed:', err);
+      });
     }
     return audioContext.value;
   }

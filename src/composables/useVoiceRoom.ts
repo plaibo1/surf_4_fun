@@ -51,6 +51,19 @@ export function useVoiceRoom() {
 
   const messages = ref<ChatMessage[]>([]);
 
+  // SyncTube state
+  const syncTubeState = ref<{
+    url: string | null;
+    playing: boolean;
+    currentTime: number;
+    lastUpdate: number;
+  }>({
+    url: null,
+    playing: false,
+    currentTime: 0,
+    lastUpdate: Date.now(),
+  });
+
   // Volume King tracking
   const volumeKing = ref<{
     id: string;
@@ -417,6 +430,7 @@ export function useVoiceRoom() {
         participants: list,
         volumeKing: roomKing,
         messages: roomMessages,
+        syncTubeState: roomSyncTubeState,
       }: {
         yourId: string;
         participants: {
@@ -426,11 +440,15 @@ export function useVoiceRoom() {
         }[];
         volumeKing?: { id: string; name: string; maxVolume: number } | null;
         messages: ChatMessage[];
+        syncTubeState?: typeof syncTubeState.value;
       }) => {
         myId.value = yourId;
         isConnected.value = true;
         playJoinSound();
         messages.value = roomMessages || [];
+        if (roomSyncTubeState) {
+          syncTubeState.value = roomSyncTubeState;
+        }
         if (roomKing) {
           volumeKing.value = roomKing;
         }
@@ -451,6 +469,10 @@ export function useVoiceRoom() {
     s.on("room-full", () => {
       roomFull.value = true;
       leave();
+    });
+
+    s.on("synctube-state-update", (state: typeof syncTubeState.value) => {
+      syncTubeState.value = state;
     });
 
     s.on(
@@ -622,6 +644,18 @@ export function useVoiceRoom() {
     socket.value.emit("send-message", { roomId: roomId.value, text });
   }
 
+  function sendSyncTubeCommand(command: {
+    type: "load" | "play" | "pause" | "seek";
+    url?: string;
+    currentTime?: number;
+  }) {
+    if (!socket.value || !roomId.value) return;
+    socket.value.emit("synctube-command", {
+      roomId: roomId.value,
+      command,
+    });
+  }
+
   function leave() {
     socket.value?.disconnect();
     socket.value = null;
@@ -652,6 +686,12 @@ export function useVoiceRoom() {
     userName.value = "";
     peerVolumes.value = {};
     messages.value = [];
+    syncTubeState.value = {
+      url: null,
+      playing: false,
+      currentTime: 0,
+      lastUpdate: Date.now(),
+    };
   }
 
   function toggleMute() {
@@ -874,9 +914,11 @@ export function useVoiceRoom() {
     roomFull,
     error,
     messages,
+    syncTubeState,
     join,
     leave,
     sendMessage,
+    sendSyncTubeCommand,
     toggleMute,
     toggleTotalMute,
     toggleVideo,
