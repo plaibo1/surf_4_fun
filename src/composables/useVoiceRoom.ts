@@ -243,8 +243,36 @@ export function useVoiceRoom() {
     remoteName: string,
     streamingStatus?: { isVideoEnabled: boolean; isScreenSharing: boolean },
   ) {
-    if (peerConnections.value.has(remoteId))
-      return peerConnections.value.get(remoteId)!;
+    if (peerConnections.value.has(remoteId)) {
+      const pc = peerConnections.value.get(remoteId)!;
+      const p = participants.value.get(remoteId);
+      if (p && streamingStatus) {
+        p.streaming = streamingStatus;
+
+        // Sync tracks if status changed via offer
+        if (p.stream) {
+          let changed = false;
+          p.stream.getVideoTracks().forEach((track) => {
+            const label = track.label.toLowerCase();
+            const isScreen =
+              label.includes("screen") || label.includes("window");
+            if (isScreen && !streamingStatus.isScreenSharing) {
+              p.stream?.removeTrack(track);
+              changed = true;
+            } else if (!isScreen && !streamingStatus.isVideoEnabled) {
+              p.stream?.removeTrack(track);
+              changed = true;
+            }
+          });
+          if (changed) {
+            p.stream = new MediaStream(p.stream.getTracks());
+          }
+        }
+
+        participants.value = new Map(participants.value);
+      }
+      return pc;
+    }
     const pc = new RTCPeerConnection({
       iceServers: currentIceServers.value,
     });
@@ -283,6 +311,24 @@ export function useVoiceRoom() {
         "streamId:",
         e.streams?.[0]?.id,
       );
+
+      e.track.onmute = () => {
+        console.log("[WebRTC] track muted", e.track.kind, remoteId);
+      };
+
+      e.track.onunmute = () => {
+        console.log("[WebRTC] track unmuted", e.track.kind, remoteId);
+      };
+
+      e.track.onended = () => {
+        console.log("[WebRTC] track ended", e.track.kind, remoteId);
+        if (participant.stream) {
+          participant.stream.removeTrack(e.track);
+          participant.stream = new MediaStream(participant.stream.getTracks());
+          participants.value = new Map(participants.value);
+        }
+      };
+
       let stream = participant.stream;
       if (!stream) {
         stream = e.streams?.[0] ?? new MediaStream();
@@ -436,6 +482,29 @@ export function useVoiceRoom() {
         const p = participants.value.get(id);
         if (p) {
           p.streaming = streaming;
+
+          // Clean up tracks that shouldn't be here according to new status
+          if (p.stream) {
+            let changed = false;
+            p.stream.getVideoTracks().forEach((track) => {
+              const label = track.label.toLowerCase();
+              const isScreen =
+                label.includes("screen") || label.includes("window");
+
+              if (isScreen && !streaming.isScreenSharing) {
+                p.stream?.removeTrack(track);
+                changed = true;
+              } else if (!isScreen && !streaming.isVideoEnabled) {
+                p.stream?.removeTrack(track);
+                changed = true;
+              }
+            });
+
+            if (changed) {
+              p.stream = new MediaStream(p.stream.getTracks());
+            }
+          }
+
           participants.value = new Map(participants.value);
         }
       },

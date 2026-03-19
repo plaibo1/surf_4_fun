@@ -103,8 +103,8 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('volume-king-updated', volumeKing)
   })
 
-  socket.on('offer', ({ to, offer }) => {
-    io.to(to).emit('offer', { from: socket.id, userName: socket.userName, offer })
+  socket.on('offer', ({ to, offer, streaming }) => {
+    io.to(to).emit('offer', { from: socket.id, userName: socket.userName, offer, streaming })
   })
 
   socket.on('answer', ({ to, answer }) => {
