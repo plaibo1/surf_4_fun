@@ -51,14 +51,16 @@ export function useVoiceRoom() {
 
   const messages = ref<ChatMessage[]>([]);
 
-  // SyncTube state
-  const syncTubeState = ref<{
+  // SharedPlayer state
+  const sharedPlayerState = ref<{
     url: string | null;
+    platform: string | null;
     playing: boolean;
     currentTime: number;
     lastUpdate: number;
   }>({
     url: null,
+    platform: null,
     playing: false,
     currentTime: 0,
     lastUpdate: Date.now(),
@@ -430,7 +432,7 @@ export function useVoiceRoom() {
         participants: list,
         volumeKing: roomKing,
         messages: roomMessages,
-        syncTubeState: roomSyncTubeState,
+        sharedPlayerState: roomSharedPlayerState,
       }: {
         yourId: string;
         participants: {
@@ -440,14 +442,14 @@ export function useVoiceRoom() {
         }[];
         volumeKing?: { id: string; name: string; maxVolume: number } | null;
         messages: ChatMessage[];
-        syncTubeState?: typeof syncTubeState.value;
+        sharedPlayerState?: typeof sharedPlayerState.value;
       }) => {
         myId.value = yourId;
         isConnected.value = true;
         playJoinSound();
         messages.value = roomMessages || [];
-        if (roomSyncTubeState) {
-          syncTubeState.value = roomSyncTubeState;
+        if (roomSharedPlayerState) {
+          sharedPlayerState.value = roomSharedPlayerState;
         }
         if (roomKing) {
           volumeKing.value = roomKing;
@@ -471,8 +473,8 @@ export function useVoiceRoom() {
       leave();
     });
 
-    s.on("synctube-state-update", (state: typeof syncTubeState.value) => {
-      syncTubeState.value = state;
+    s.on("player-state-update", (state: typeof sharedPlayerState.value) => {
+      sharedPlayerState.value = state;
     });
 
     s.on(
@@ -644,13 +646,14 @@ export function useVoiceRoom() {
     socket.value.emit("send-message", { roomId: roomId.value, text });
   }
 
-  function sendSyncTubeCommand(command: {
+  function sendPlayerCommand(command: {
     type: "load" | "play" | "pause" | "seek";
     url?: string;
+    platform?: string;
     currentTime?: number;
   }) {
     if (!socket.value || !roomId.value) return;
-    socket.value.emit("synctube-command", {
+    socket.value.emit("player-command", {
       roomId: roomId.value,
       command,
     });
@@ -686,8 +689,9 @@ export function useVoiceRoom() {
     userName.value = "";
     peerVolumes.value = {};
     messages.value = [];
-    syncTubeState.value = {
+    sharedPlayerState.value = {
       url: null,
+      platform: null,
       playing: false,
       currentTime: 0,
       lastUpdate: Date.now(),
@@ -914,11 +918,11 @@ export function useVoiceRoom() {
     roomFull,
     error,
     messages,
-    syncTubeState,
+    sharedPlayerState,
     join,
     leave,
     sendMessage,
-    sendSyncTubeCommand,
+    sendPlayerCommand,
     toggleMute,
     toggleTotalMute,
     toggleVideo,

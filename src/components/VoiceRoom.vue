@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue'
 import { useVoiceRoom } from '@/composables/useVoiceRoom'
-import SyncTube from '@/components/SyncTube.vue'
+import SharedPlayer from '@/components/shared-player/SharedPlayer.vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Slider from '@/components/ui/slider/Slider.vue'
@@ -10,7 +10,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, Youtube } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, PlayCircle } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 
 const props = defineProps<{
@@ -37,14 +37,14 @@ const {
   isScreenSharing,
   roomFull,
   error,
-  syncTubeState,
+  sharedPlayerState,
   join,
   leave,
   toggleMute,
   toggleTotalMute,
   toggleVideo,
   toggleScreenShare,
-  sendSyncTubeCommand,
+  sendPlayerCommand,
   myStream,
   isLocalSpeaking,
   localAudioLevel,
@@ -56,17 +56,16 @@ const {
   sendMessage,
 } = useVoiceRoom()
 
-const isSyncTubeVisible = ref(false)
+const isSharedPlayerVisible = ref(false)
 
 const hasStreams = computed(() =>
   (myStream.value?.getVideoTracks()?.length ?? 0) > 0 ||
   participants.value.some(p => (p.stream?.getVideoTracks()?.length ?? 0) > 0) ||
-  isSyncTubeVisible.value ||
-  !!syncTubeState.value.url
+  isSharedPlayerVisible.value
 )
 
-watch(() => syncTubeState.value.url, (newUrl) => {
-  if (newUrl) isSyncTubeVisible.value = true
+watch(() => sharedPlayerState.value.url, (newUrl) => {
+  if (newUrl) isSharedPlayerVisible.value = true
 })
 
 const newMessage = ref('')
@@ -294,10 +293,10 @@ onUnmounted(() => {
               <VideoOff v-else class="h-4 w-4" />
               <span class="text-[10px] sm:text-xs">{{ isVideoEnabled ? 'Выкл камеру' : 'Камера' }}</span>
             </Button>
-            <Button :variant="isSyncTubeVisible ? 'secondary' : 'outline'"
-              class="w-full gap-2 border-primary/10 hover:border-primary/30 h-10 sm:h-auto" @click="isSyncTubeVisible = !isSyncTubeVisible">
-              <Youtube class="h-4 w-4" :class="isSyncTubeVisible ? 'text-red-500' : ''" />
-              <span class="text-[10px] sm:text-xs">SyncTube</span>
+            <Button :variant="isSharedPlayerVisible ? 'secondary' : 'outline'"
+              class="w-full gap-2 border-primary/10 hover:border-primary/30 h-10 sm:h-auto" @click="isSharedPlayerVisible = !isSharedPlayerVisible">
+              <PlayCircle class="h-4 w-4" :class="isSharedPlayerVisible ? 'text-primary' : ''" />
+              <span class="text-[10px] sm:text-xs">SharedPlayer</span>
             </Button>
             <Button variant="outline"
               class="w-full gap-2 border-primary/10 hover:border-primary/30 transition-all h-10 sm:h-auto"
@@ -572,11 +571,11 @@ onUnmounted(() => {
         <CardContent class="p-2 sm:p-4 transition-all duration-500"
           :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4' : 'flex flex-col gap-2 sm:gap-4'">
           
-          <!-- SyncTube -->
-          <div v-if="isSyncTubeVisible" 
+          <!-- SharedPlayer -->
+          <div v-if="isSharedPlayerVisible" 
             :class="viewMode === 'grid' ? 'col-span-1 md:col-span-2' : ''"
             class="aspect-video w-full">
-            <SyncTube :sync-tube-state="syncTubeState" :send-sync-tube-command="sendSyncTubeCommand" />
+            <SharedPlayer :state="sharedPlayerState" @command="sendPlayerCommand" />
           </div>
 
           <!-- Видеопотоки -->
