@@ -10,7 +10,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, VideoOff, Monitor, MonitorOff, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, PlayCircle } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, PlayCircle } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 
 const props = defineProps<{
@@ -279,40 +279,76 @@ onUnmounted(() => {
           </div>
         </CardHeader>
 
-        <CardContent class="space-y-4 px-4 sm:px-6">
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <Button :variant="isScreenSharing ? 'secondary' : 'outline'"
-              class="w-full gap-2 border-primary/10 hover:border-primary/30 h-10 sm:h-auto" @click="toggleScreenShare">
-              <Monitor v-if="!isScreenSharing" class="h-4 w-4" />
-              <MonitorOff v-else class="h-4 w-4" />
-              <span class="text-[10px] sm:text-xs">{{ isScreenSharing ? 'Стоп экран' : 'Экран' }}</span>
-            </Button>
-            <Button :variant="isVideoEnabled ? 'secondary' : 'outline'"
-              class="w-full gap-2 border-primary/10 hover:border-primary/30 h-10 sm:h-auto" @click="toggleVideo">
-              <Video v-if="!isVideoEnabled" class="h-4 w-4" />
-              <VideoOff v-else class="h-4 w-4" />
-              <span class="text-[10px] sm:text-xs">{{ isVideoEnabled ? 'Выкл камеру' : 'Камера' }}</span>
-            </Button>
-            <Button :variant="isSharedPlayerVisible ? 'secondary' : 'outline'"
-              class="w-full gap-2 border-primary/10 hover:border-primary/30 h-10 sm:h-auto" @click="isSharedPlayerVisible = !isSharedPlayerVisible">
-              <PlayCircle class="h-4 w-4" :class="isSharedPlayerVisible ? 'text-primary' : ''" />
-              <span class="text-[10px] sm:text-xs">SharedPlayer</span>
-            </Button>
-            <Button variant="outline"
-              class="w-full gap-2 border-primary/10 hover:border-primary/30 transition-all h-10 sm:h-auto"
-              :class="{ 'border-green-500/50 bg-green-500/5 text-green-600': copiedLink === currentUrl }"
-              @click="copyToClipboard(currentUrl)">
-              <Check v-if="copiedLink === currentUrl" class="h-4 w-4" />
-              <Share2 v-else class="h-4 w-4" />
-              <span class="text-[10px] sm:text-xs">
-                {{ copiedLink === currentUrl ? 'Ок!' : 'Позвать' }}
-              </span>
-            </Button>
-            <Button variant="destructive" class="w-full col-span-2 sm:col-span-1 gap-2 shadow-lg shadow-destructive/10 h-10 sm:h-auto"
-              @click="onLeave">
-              <LogOut class="h-4 w-4" />
-              <span class="text-[10px] sm:text-xs">Выйти</span>
-            </Button>
+        <CardContent class="px-4 sm:px-6 pb-6 pt-2">
+          <div class="flex flex-col gap-2">
+            <!-- Основные переключатели -->
+            <div class="grid grid-cols-3 gap-2">
+              <Button 
+                :variant="isScreenSharing ? 'secondary' : 'outline'"
+                class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
+                :class="isScreenSharing ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
+                @click="toggleScreenShare"
+              >
+                <Monitor class="h-4 w-4" />
+                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isScreenSharing ? 'Экран' : 'Экран' }}</span>
+              </Button>
+
+              <Button 
+                :variant="isVideoEnabled ? 'secondary' : 'outline'"
+                class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
+                :class="isVideoEnabled ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
+                @click="toggleVideo"
+              >
+                <Video class="h-4 w-4" />
+                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isVideoEnabled ? 'Камера' : 'Камера' }}</span>
+              </Button>
+
+              <Button 
+                :variant="isSharedPlayerVisible ? 'secondary' : 'outline'"
+                class="relative h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
+                :class="isSharedPlayerVisible ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
+                @click="isSharedPlayerVisible = !isSharedPlayerVisible"
+              >
+                <!-- Badge Beta -->
+                <div class="absolute -top-2 -right-1 px-1.5 py-0.5 bg-yellow-500 text-[8px] font-black text-yellow-950 rounded-full leading-none shadow-sm z-10 select-none border border-background">
+                  BETA
+                </div>
+
+                <div class="relative">
+                  <PlayCircle class="h-4 w-4" />
+                  <div v-if="sharedPlayerState.url" class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-red-500 border border-background"></div>
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">SyncWatch</span>
+              </Button>
+            </div>
+
+            <!-- Вспомогательные действия -->
+            <div class="flex items-stretch gap-2">
+              <Button 
+                variant="outline"
+                size="lg"
+                class="flex-1 gap-2 border-primary/5 hover:border-primary/20 bg-muted/5 transition-all active:scale-95"
+                :class="{ 'border-green-500/50 bg-green-500/5 text-green-600': copiedLink === currentUrl }"
+                @click="copyToClipboard(currentUrl)"
+              >
+                <Check v-if="copiedLink === currentUrl" class="h-4 w-4" />
+                <Share2 v-else class="h-4 w-4" />
+                <span class="text-[10px] font-bold uppercase tracking-tight">
+                  {{ copiedLink === currentUrl ? 'Готово' : 'Пригласить друзей' }}
+                </span>
+              </Button>
+              
+              <Button 
+                variant="destructive" 
+                size="lg"
+                class="px-4 shadow-none transition-all hover:bg-destructive/90 active:scale-95"
+                @click="onLeave"
+                title="Выйти из комнаты"
+              >
+                <LogOut class="h-4 w-4 sm:mr-1" />
+                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">Выход</span>
+              </Button>
+            </div>
           </div>
 
           <p v-if="error"

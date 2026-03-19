@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import Input from '@/components/ui/input/Input.vue'
 import Button from '@/components/ui/button/Button.vue'
-import { Send, PlayCircle, X } from 'lucide-vue-next'
+import { Send, PlayCircle, X, AlertCircle } from 'lucide-vue-next'
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
@@ -31,6 +31,21 @@ const props = defineProps<{
 const videoUrlInput = ref('')
 const { initAudioContext } = useSoundEffects()
 
+// Метаданные платформ (паттерн Strategy Configuration)
+const PLATFORMS: Record<string, { name: string, notice?: string }> = {
+  youtube: {
+    name: 'YouTube'
+  },
+  rutube: {
+    name: 'Rutube',
+    notice: 'Синхронизация Rutube не работает'
+  },
+  vk: {
+    name: 'VK Video',
+    notice: 'Синхронизация VK Video не работает'
+  }
+}
+
 const detectPlatform = (url: string) => {
   if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
   if (url.includes('rutube.ru')) return 'rutube'
@@ -45,10 +60,14 @@ const currentAdapter = computed(() => {
   return null
 })
 
+const currentPlatformInfo = computed(() => {
+  return props.state.platform ? PLATFORMS[props.state.platform] : null
+})
+
 function handleLoadVideo() {
   const url = videoUrlInput.value.trim()
   if (!url) return
-  
+
   const platform = detectPlatform(url)
   if (!platform) {
     alert('Платформа не поддерживается. Используйте YouTube, Rutube или VK.')
@@ -69,7 +88,8 @@ function handleAdapterCommand(cmd: { type: string, currentTime: number }) {
 </script>
 
 <template>
-  <Card class="border-none shadow-2xl bg-black/95 overflow-hidden flex flex-col w-full h-full rounded-none sm:rounded-2xl">
+  <Card
+    class="border-none shadow-2xl bg-black/95 overflow-hidden flex flex-col w-full h-full rounded-none sm:rounded-2xl">
     <CardHeader class="border-b border-white/10 bg-zinc-900/50 pb-3 px-4 sm:px-6">
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-2">
@@ -78,15 +98,18 @@ function handleAdapterCommand(cmd: { type: string, currentTime: number }) {
           </div>
           <CardTitle class="text-base sm:text-lg font-black tracking-tight text-white">SyncWatch</CardTitle>
         </div>
-        
+
         <div v-if="state.url" class="flex items-center gap-2">
-          <div class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-            {{ state.platform }}
+          <div
+            class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
+            {{ currentPlatformInfo?.name || state.platform }}
           </div>
-          <div class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
+          <div
+            class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
             {{ state.playing ? 'Воспроизведение' : 'Пауза' }}
           </div>
-          <Button variant="ghost" size="icon" class="h-6 w-6 text-zinc-500 hover:text-white hover:bg-white/10" @click="onCommand({ type: 'load', url: undefined, platform: undefined })">
+          <Button variant="ghost" size="icon" class="h-6 w-6 text-zinc-500 hover:text-white hover:bg-white/10"
+            @click="onCommand({ type: 'load', url: undefined, platform: undefined })">
             <X class="h-3 w-3" />
           </Button>
         </div>
@@ -95,7 +118,8 @@ function handleAdapterCommand(cmd: { type: string, currentTime: number }) {
 
     <CardContent class="flex-1 flex flex-col p-0 overflow-hidden relative">
       <!-- Empty State -->
-      <div v-if="!state.url" class="absolute inset-0 flex flex-col items-center justify-center text-center space-y-6 p-6">
+      <div v-if="!state.url"
+        class="absolute inset-0 flex flex-col items-center justify-center text-center space-y-6 p-6">
         <div class="relative">
           <div class="absolute inset-0 bg-primary/10 blur-3xl rounded-full"></div>
           <PlayCircle class="h-16 w-16 text-zinc-800 relative z-10" />
@@ -105,39 +129,37 @@ function handleAdapterCommand(cmd: { type: string, currentTime: number }) {
           <p class="text-zinc-500 text-sm max-w-xs">YouTube, Rutube, VK и другие платформы</p>
         </div>
         <div class="w-full max-w-md flex items-center gap-2">
-          <Input 
-            v-model="videoUrlInput" 
-            placeholder="Вставьте ссылку на видео..." 
-            class="bg-zinc-900 border-zinc-800 text-white"
-            @keyup.enter="handleLoadVideo"
-          />
+          <Input v-model="videoUrlInput" placeholder="Вставьте ссылку на видео..."
+            class="bg-zinc-900 border-zinc-800 text-white" @keyup.enter="handleLoadVideo" />
           <Button @click="handleLoadVideo" variant="default" size="icon" class="shrink-0">
             <Send class="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <!-- Player Adapter -->
-      <div class="w-full h-full" v-if="state.url">
-        <component 
-          :is="currentAdapter" 
-          v-if="currentAdapter"
-          :state="state" 
-          @command="handleAdapterCommand"
-        />
-        <div v-else class="flex items-center justify-center h-full text-white">
-          Платформа {{ state.platform }} не поддерживается
+      <!-- Player Adapter Area -->
+      <div class="w-full h-full flex flex-col" v-if="state.url">
+        <!-- Platform Notice Banner -->
+        <div v-if="currentPlatformInfo?.notice"
+          class="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-1.5 flex items-center gap-2">
+          <AlertCircle class="h-3 w-3 text-yellow-500 shrink-0" />
+          <p class="text-[9px] font-bold text-yellow-500/80 uppercase tracking-wider">{{ currentPlatformInfo.notice }}
+          </p>
+        </div>
+
+        <div class="flex-1 min-h-0">
+          <component :is="currentAdapter" v-if="currentAdapter" :state="state" @command="handleAdapterCommand" />
+          <div v-else class="flex items-center justify-center h-full text-white">
+            Платформа {{ state.platform }} не поддерживается
+          </div>
         </div>
       </div>
 
       <!-- Controls for change video -->
-      <div v-if="state.url" class="p-2 sm:p-3 bg-zinc-900/80 border-t border-white/5 backdrop-blur-xl flex items-center gap-2">
-        <Input 
-          v-model="videoUrlInput" 
-          placeholder="Сменить видео..." 
-          class="flex-1 h-9 bg-black/40 border-none text-[11px] px-3 text-white"
-          @keyup.enter="handleLoadVideo"
-        />
+      <div v-if="state.url"
+        class="p-2 sm:p-3 bg-zinc-900/80 border-t border-white/5 backdrop-blur-xl flex items-center gap-2">
+        <Input v-model="videoUrlInput" placeholder="Сменить видео..."
+          class="flex-1 h-9 bg-black/40 border-none text-[11px] px-3 text-white" @keyup.enter="handleLoadVideo" />
         <Button @click="handleLoadVideo" variant="ghost" size="icon" class="h-9 w-9 text-zinc-400 hover:text-white">
           <Send class="h-4 w-4" />
         </Button>
