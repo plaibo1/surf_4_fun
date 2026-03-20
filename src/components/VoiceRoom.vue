@@ -359,7 +359,7 @@ onUnmounted(() => {
             В комнате уже 5 человек.</p>
 
           <div v-if="volumeKing"
-            class="p-2 sm:p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 flex items-center justify-between shadow-inner">
+            class="mt-4 p-2 sm:p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 flex items-center justify-between shadow-inner">
             <div class="flex items-center gap-2 sm:gap-3">
               <div class="relative">
                 <div
