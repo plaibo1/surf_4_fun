@@ -923,6 +923,8 @@ export function useVoiceRoom() {
     leave,
     sendMessage,
     sendPlayerCommand,
+    cameraTrack,
+    screenTrack,
     toggleMute,
     toggleTotalMute,
     toggleVideo,

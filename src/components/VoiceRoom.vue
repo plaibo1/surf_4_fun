@@ -45,6 +45,7 @@ const {
   toggleVideo,
   toggleScreenShare,
   sendPlayerCommand,
+  cameraTrack,
   myStream,
   isLocalSpeaking,
   localAudioLevel,
@@ -275,7 +276,7 @@ onUnmounted(() => {
               </div>
             </div>
             <span class="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">{{ participants.length + 1
-              }} в сети</span>
+            }} в сети</span>
           </div>
         </CardHeader>
 
@@ -283,40 +284,38 @@ onUnmounted(() => {
           <div class="flex flex-col gap-2">
             <!-- Основные переключатели -->
             <div class="grid grid-cols-3 gap-2">
-              <Button 
-                :variant="isScreenSharing ? 'secondary' : 'outline'"
+              <Button :variant="isScreenSharing ? 'secondary' : 'outline'"
                 class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
                 :class="isScreenSharing ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
-                @click="toggleScreenShare"
-              >
+                @click="toggleScreenShare">
                 <Monitor class="h-4 w-4" />
-                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isScreenSharing ? 'Экран' : 'Экран' }}</span>
+                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isScreenSharing ?
+                  'Экран' : 'Экран' }}</span>
               </Button>
 
-              <Button 
-                :variant="isVideoEnabled ? 'secondary' : 'outline'"
+              <Button :variant="isVideoEnabled ? 'secondary' : 'outline'"
                 class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
                 :class="isVideoEnabled ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
-                @click="toggleVideo"
-              >
+                @click="toggleVideo">
                 <Video class="h-4 w-4" />
-                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isVideoEnabled ? 'Камера' : 'Камера' }}</span>
+                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isVideoEnabled ?
+                  'Камера' : 'Камера' }}</span>
               </Button>
 
-              <Button 
-                :variant="isSharedPlayerVisible ? 'secondary' : 'outline'"
+              <Button :variant="isSharedPlayerVisible ? 'secondary' : 'outline'"
                 class="relative h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
                 :class="isSharedPlayerVisible ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
-                @click="isSharedPlayerVisible = !isSharedPlayerVisible"
-              >
+                @click="isSharedPlayerVisible = !isSharedPlayerVisible">
                 <!-- Badge Beta -->
-                <div class="absolute -top-2 -right-1 px-1.5 py-0.5 bg-yellow-500 text-[8px] font-black text-yellow-950 rounded-full leading-none shadow-sm z-10 select-none border border-background">
+                <div
+                  class="absolute -top-2 -right-1 px-1.5 py-0.5 bg-yellow-500 text-[8px] font-black text-yellow-950 rounded-full leading-none shadow-sm z-10 select-none border border-background">
                   BETA
                 </div>
 
                 <div class="relative">
                   <PlayCircle class="h-4 w-4" />
-                  <div v-if="sharedPlayerState.url" class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-red-500 border border-background"></div>
+                  <div v-if="sharedPlayerState.url"
+                    class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-red-500 border border-background"></div>
                 </div>
                 <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">SyncWatch</span>
               </Button>
@@ -324,27 +323,20 @@ onUnmounted(() => {
 
             <!-- Вспомогательные действия -->
             <div class="flex items-stretch gap-2">
-              <Button 
-                variant="outline"
-                size="lg"
+              <Button variant="outline" size="lg"
                 class="flex-1 gap-2 border-primary/5 hover:border-primary/20 bg-muted/5 transition-all active:scale-95"
                 :class="{ 'border-green-500/50 bg-green-500/5 text-green-600': copiedLink === currentUrl }"
-                @click="copyToClipboard(currentUrl)"
-              >
+                @click="copyToClipboard(currentUrl)">
                 <Check v-if="copiedLink === currentUrl" class="h-4 w-4" />
                 <Share2 v-else class="h-4 w-4" />
                 <span class="text-[10px] font-bold uppercase tracking-tight">
                   {{ copiedLink === currentUrl ? 'Готово' : 'Пригласить друзей' }}
                 </span>
               </Button>
-              
-              <Button 
-                variant="destructive" 
-                size="lg"
-                class="px-4 shadow-none transition-all hover:bg-destructive/90 active:scale-95"
-                @click="onLeave"
-                title="Выйти из комнаты"
-              >
+
+              <Button variant="destructive" size="lg"
+                class="px-4 shadow-none transition-all hover:bg-destructive/90 active:scale-95" @click="onLeave"
+                title="Выйти из комнаты">
                 <LogOut class="h-4 w-4 sm:mr-1" />
                 <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">Выход</span>
               </Button>
@@ -606,10 +598,9 @@ onUnmounted(() => {
 
         <CardContent class="p-2 sm:p-4 transition-all duration-500"
           :class="viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4' : 'flex flex-col gap-2 sm:gap-4'">
-          
+
           <!-- SharedPlayer -->
-          <div v-if="isSharedPlayerVisible" 
-            :class="viewMode === 'grid' ? 'col-span-1 md:col-span-2' : ''"
+          <div v-if="isSharedPlayerVisible" :class="viewMode === 'grid' ? 'col-span-1 md:col-span-2' : ''"
             class="aspect-video w-full">
             <SharedPlayer :state="sharedPlayerState" @command="sendPlayerCommand" />
           </div>
@@ -621,7 +612,8 @@ onUnmounted(() => {
               :class="isLocalSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-primary/10'"
               @dblclick="toggleFullscreen">
               <video v-stream="getOrCreateStream(track)" autoplay playsinline muted
-                class="w-full h-full object-cover scale-[1.01] transition-all duration-700"></video>
+                class="w-full h-full object-cover transition-all duration-700"
+                :class="track.id === cameraTrack?.id ? '-scale-x-[1.01] scale-y-[1.01]' : 'scale-[1.01]'"></video>
               <div
                 class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-60 group-hover:opacity-100 transition-opacity">
               </div>
