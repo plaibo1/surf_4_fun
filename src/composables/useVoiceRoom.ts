@@ -16,6 +16,7 @@ export interface Participant {
   stream?: MediaStream;
   volume: number;
   muted?: boolean;
+  muteStatus?: { isMuted: boolean; isTotalMuted: boolean };
   streaming?: { isVideoEnabled: boolean; isScreenSharing: boolean };
   /** Dummy audio element so browser allows playback from MediaStream (autoplay policy) */
   audioElement?: HTMLAudioElement;
@@ -253,19 +254,28 @@ export function useVoiceRoom() {
     });
   }
 
+  function updateMuteStatus() {
+    socket.value?.emit("update-mute-status", {
+      isMuted: isMuted.value,
+      isTotalMuted: isTotalMuted.value,
+    });
+  }
+
   function createPeerConnection(
     remoteId: string,
     remoteName: string,
     streamingStatus?: { isVideoEnabled: boolean; isScreenSharing: boolean },
+    muteStatus?: { isMuted: boolean; isTotalMuted: boolean },
   ) {
     if (peerConnections.value.has(remoteId)) {
       const pc = peerConnections.value.get(remoteId)!;
       const p = participants.value.get(remoteId);
-      if (p && streamingStatus) {
-        p.streaming = streamingStatus;
+      if (p) {
+        if (streamingStatus) p.streaming = streamingStatus;
+        if (muteStatus) p.muteStatus = muteStatus;
 
         // Sync tracks if status changed via offer
-        if (p.stream) {
+        if (p.stream && streamingStatus) {
           let changed = false;
           p.stream.getVideoTracks().forEach((track) => {
             const label = track.label.toLowerCase();
@@ -303,6 +313,10 @@ export function useVoiceRoom() {
       streaming: streamingStatus || {
         isVideoEnabled: false,
         isScreenSharing: false,
+      },
+      muteStatus: muteStatus || {
+        isMuted: false,
+        isTotalMuted: false,
       },
     };
     participants.value.set(remoteId, participant);
@@ -439,6 +453,7 @@ export function useVoiceRoom() {
           id: string;
           userName: string;
           streaming: { isVideoEnabled: boolean; isScreenSharing: boolean };
+          muteStatus: { isMuted: boolean; isTotalMuted: boolean };
         }[];
         volumeKing?: { id: string; name: string; maxVolume: number } | null;
         messages: ChatMessage[];
@@ -459,7 +474,7 @@ export function useVoiceRoom() {
         }
         for (const p of list) {
           peerVolumes.value[p.id] = 100;
-          const pc = createPeerConnection(p.id, p.userName, p.streaming);
+          const pc = createPeerConnection(p.id, p.userName, p.streaming, p.muteStatus);
           console.log("[WebRTC] createOffer for", p.id);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
@@ -483,14 +498,16 @@ export function useVoiceRoom() {
         id: remoteId,
         userName: remoteName,
         streaming: remoteStreaming,
+        muteStatus: remoteMuteStatus,
       }: {
         id: string;
         userName: string;
         streaming: { isVideoEnabled: boolean; isScreenSharing: boolean };
+        muteStatus: { isMuted: boolean; isTotalMuted: boolean };
       }) => {
         peerVolumes.value[remoteId] = 100;
         playJoinSound();
-        createPeerConnection(remoteId, remoteName, remoteStreaming);
+        createPeerConnection(remoteId, remoteName, remoteStreaming, remoteMuteStatus);
       },
     );
 
@@ -529,6 +546,23 @@ export function useVoiceRoom() {
             }
           }
 
+          participants.value = new Map(participants.value);
+        }
+      },
+    );
+
+    s.on(
+      "mute-status-updated",
+      ({
+        id,
+        muteStatus,
+      }: {
+        id: string;
+        muteStatus: { isMuted: boolean; isTotalMuted: boolean };
+      }) => {
+        const p = participants.value.get(id);
+        if (p) {
+          p.muteStatus = muteStatus;
           participants.value = new Map(participants.value);
         }
       },
@@ -638,7 +672,11 @@ export function useVoiceRoom() {
       },
     );
 
-    s.emit("join-room", { roomId: rId, userName: uName });
+    s.emit("join-room", {
+      roomId: rId,
+      userName: uName,
+      muteStatus: { isMuted: isMuted.value, isTotalMuted: isTotalMuted.value },
+    });
   }
 
   function sendMessage(text: string) {
@@ -719,6 +757,8 @@ export function useVoiceRoom() {
     myStream.value?.getAudioTracks().forEach((t) => {
       t.enabled = !isMuted.value;
     });
+
+    updateMuteStatus();
   }
 
   function toggleTotalMute() {
@@ -741,6 +781,8 @@ export function useVoiceRoom() {
         p.audioElement.volume = (isTotalMuted.value ? 0 : vol) / 100;
       }
     });
+
+    updateMuteStatus();
   }
 
   async function toggleVideo() {

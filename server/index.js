@@ -30,11 +30,13 @@ const roomVolumeKings = new Map()
 const roomMessages = new Map()
 // Track streaming status for each socket id: { isVideoEnabled: boolean, isScreenSharing: boolean }
 const streamingStatuses = new Map()
+// Track mute status for each socket id: { isMuted: boolean, isTotalMuted: boolean }
+const muteStatuses = new Map()
 // SharedPlayer state: { url: string, playing: boolean, currentTime: number, lastUpdate: number, platform: string }
 const roomSharedPlayerStates = new Map()
 
 io.on('connection', (socket) => {
-  socket.on('join-room', async ({ roomId, userName }) => {
+  socket.on('join-room', async ({ roomId, userName, muteStatus }) => {
     const room = rooms.get(roomId) || new Set()
     if (room.size >= MAX_PARTICIPANTS) {
       socket.emit('room-full')
@@ -48,6 +50,7 @@ io.on('connection', (socket) => {
     
     // Initial status
     streamingStatuses.set(socket.id, { isVideoEnabled: false, isScreenSharing: false })
+    muteStatuses.set(socket.id, muteStatus || { isMuted: false, isTotalMuted: false })
 
     const roomSockets = await io.in(roomId).fetchSockets()
     const participants = roomSockets
@@ -55,7 +58,8 @@ io.on('connection', (socket) => {
       .map((s) => ({ 
         id: s.id, 
         userName: s.userName,
-        streaming: streamingStatuses.get(s.id) || { isVideoEnabled: false, isScreenSharing: false }
+        streaming: streamingStatuses.get(s.id) || { isVideoEnabled: false, isScreenSharing: false },
+        muteStatus: muteStatuses.get(s.id) || { isMuted: false, isTotalMuted: false }
       }))
 
     const currentKing = roomVolumeKings.get(roomId)
@@ -72,7 +76,8 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('participant-joined', { 
       id: socket.id, 
       userName: socket.userName,
-      streaming: { isVideoEnabled: false, isScreenSharing: false }
+      streaming: { isVideoEnabled: false, isScreenSharing: false },
+      muteStatus: muteStatus || { isMuted: false, isTotalMuted: false }
     })
   })
 
@@ -109,6 +114,16 @@ io.on('connection', (socket) => {
       socket.to(socket.roomId).emit('streaming-status-updated', { 
         id: socket.id, 
         streaming: status 
+      })
+    }
+  })
+
+  socket.on('update-mute-status', (muteStatus) => {
+    muteStatuses.set(socket.id, muteStatus)
+    if (socket.roomId) {
+      socket.to(socket.roomId).emit('mute-status-updated', { 
+        id: socket.id, 
+        muteStatus 
       })
     }
   })

@@ -10,7 +10,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, PlayCircle } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, PlayCircle, HeadphoneOff } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 
 const props = defineProps<{
@@ -392,7 +392,8 @@ onUnmounted(() => {
               <div
                 class="absolute -bottom-1 -right-1 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border-2 sm:border-4 border-background shadow-lg transition-colors duration-300"
                 :class="isMuted ? 'bg-destructive' : 'bg-green-500'">
-                <MicOff v-if="isMuted" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
+                <HeadphoneOff v-if="isTotalMuted" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
+                <MicOff v-else-if="isMuted" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
                 <Mic v-else class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
               </div>
             </div>
@@ -459,7 +460,11 @@ onUnmounted(() => {
               {{ p.userName.charAt(0).toUpperCase() }}
             </div>
             <div class="flex-1 min-w-0">
-              <p class="font-bold text-xs sm:text-sm truncate">{{ p.userName }}</p>
+              <div class="flex items-center gap-2">
+                <p class="font-bold text-xs sm:text-sm truncate">{{ p.userName }}</p>
+                <HeadphoneOff v-if="p.muteStatus?.isTotalMuted" class="h-3 w-3 text-destructive" />
+                <MicOff v-else-if="p.muteStatus?.isMuted" class="h-3 w-3 text-destructive" />
+              </div>
               <div class="flex items-center gap-2 mt-1">
                 <Slider :model-value="[getVolume(p.id)]" :min="0" :max="100" :step="1" class="flex-1 h-1"
                   @update:model-value="(v) => setVolume(p.id, v?.[0] ?? 100)" />
@@ -631,7 +636,8 @@ onUnmounted(() => {
                   <span class="text-[10px] sm:text-xs font-bold text-white truncate max-w-[80px] sm:max-w-[100px]">{{
                     userName }}</span>
                   <div class="flex items-center gap-1 border-l border-white/20 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
-                    <MicOff v-if="isMuted" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400" />
+                    <HeadphoneOff v-if="isTotalMuted" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400" />
+                    <MicOff v-else-if="isMuted" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400" />
                     <Mic v-else class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-green-400" />
                   </div>
                 </div>
@@ -669,6 +675,9 @@ onUnmounted(() => {
                     <span class="text-[10px] sm:text-xs font-bold text-white truncate max-w-[100px] sm:max-w-[120px]">{{
                       p.userName }}</span>
                     <div class="flex items-center border-l border-white/20 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
+                      <HeadphoneOff v-if="p.muteStatus?.isTotalMuted" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400 mr-1" />
+                      <MicOff v-else-if="p.muteStatus?.isMuted" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400 mr-1" />
+
                       <Monitor
                         v-if="track.label.toLowerCase().includes('screen') || track.label.toLowerCase().includes('window')"
                         class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary" />
