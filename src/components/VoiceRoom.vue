@@ -276,7 +276,7 @@ onUnmounted(() => {
               </div>
             </div>
             <span class="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">{{ participants.length + 1
-            }} в сети</span>
+              }} в сети</span>
           </div>
         </CardHeader>
 
@@ -617,8 +617,11 @@ onUnmounted(() => {
               :class="isLocalSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-primary/10'"
               @dblclick="toggleFullscreen">
               <video v-stream="getOrCreateStream(track)" autoplay playsinline muted
-                class="w-full h-full object-cover transition-all duration-700"
-                :class="track.id === cameraTrack?.id ? '-scale-x-[1.01] scale-y-[1.01]' : 'scale-[1.01]'"></video>
+                class="w-full h-full transition-all duration-700"
+                :class="{
+                  'object-cover -scale-x-[1.01] scale-y-[1.01] is-mirrored': track.id === cameraTrack?.id,
+                  'object-contain bg-black scale-100': track.id !== cameraTrack?.id
+                }"></video>
               <div
                 class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-60 group-hover:opacity-100 transition-opacity">
               </div>
@@ -656,7 +659,8 @@ onUnmounted(() => {
                 :class="p.isSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-white/5'"
                 @dblclick="toggleFullscreen">
                 <video v-stream="getOrCreateStream(track)" autoplay playsinline
-                  class="w-full h-full object-cover scale-[1.01] transition-all duration-700"></video>
+                  class="w-full h-full transition-all duration-700"
+                  :class="track.label.toLowerCase().includes('screen') || track.label.toLowerCase().includes('window') ? 'object-contain bg-black scale-100' : 'object-cover scale-[1.01]'"></video>
                 <div
                   class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-40 group-hover:opacity-90 transition-opacity">
                 </div>
@@ -675,7 +679,8 @@ onUnmounted(() => {
                     <span class="text-[10px] sm:text-xs font-bold text-white truncate max-w-[100px] sm:max-w-[120px]">{{
                       p.userName }}</span>
                     <div class="flex items-center border-l border-white/20 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
-                      <HeadphoneOff v-if="p.muteStatus?.isTotalMuted" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400 mr-1" />
+                      <HeadphoneOff v-if="p.muteStatus?.isTotalMuted"
+                        class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400 mr-1" />
                       <MicOff v-else-if="p.muteStatus?.isMuted" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400 mr-1" />
 
                       <Monitor
@@ -697,3 +702,45 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.group:fullscreen {
+  border: none !important;
+  border-radius: 0 !important;
+  background-color: #09090b !important; /* zinc-950 */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .group:fullscreen {
+    padding: 3rem !important;
+  }
+}
+
+.group:fullscreen video {
+  /* Make video shrink to its intrinsic size instead of filling the view */
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: auto !important;
+  object-fit: contain !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  transform: scale(1) !important;
+}
+
+@media (min-width: 640px) {
+  .group:fullscreen video {
+    border-radius: 24px !important;
+  }
+}
+
+.group:fullscreen video.is-mirrored {
+  transform: scaleX(-1) !important;
+}
+</style>
