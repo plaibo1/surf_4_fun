@@ -10,7 +10,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import type { DirectiveBinding } from 'vue'
-import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, PlayCircle, HeadphoneOff } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Send, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, MessageSquare, Ghost, Scan, LayoutGrid, LayoutList, Star, Swords, PlayCircle, HeadphoneOff, RefreshCw } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 
 const props = defineProps<{
@@ -34,6 +34,7 @@ const {
   isMuted,
   isTotalMuted,
   isVideoEnabled,
+  currentFacingMode,
   isScreenSharing,
   roomFull,
   error,
@@ -43,6 +44,7 @@ const {
   toggleMute,
   toggleTotalMute,
   toggleVideo,
+  switchCamera,
   toggleScreenShare,
   sendPlayerCommand,
   cameraTrack,
@@ -283,7 +285,7 @@ onUnmounted(() => {
         <CardContent class="px-4 sm:px-6 pb-6 pt-2">
           <div class="flex flex-col gap-2">
             <!-- Основные переключатели -->
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid gap-2" :class="isVideoEnabled ? 'grid-cols-4 sm:grid-cols-3' : 'grid-cols-3'">
               <Button :variant="isScreenSharing ? 'secondary' : 'outline'"
                 class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
                 :class="isScreenSharing ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
@@ -300,6 +302,14 @@ onUnmounted(() => {
                 <Video class="h-4 w-4" />
                 <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isVideoEnabled ?
                   'Камера' : 'Камера' }}</span>
+              </Button>
+
+              <Button v-if="isVideoEnabled" variant="outline"
+                class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200 bg-muted/5 sm:hidden"
+                @click="switchCamera">
+                <RefreshCw class="h-4 w-4" />
+                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ currentFacingMode ===
+                  'user' ? 'Front' : 'Back' }}</span>
               </Button>
 
               <Button :variant="isSharedPlayerVisible ? 'secondary' : 'outline'"
@@ -619,7 +629,9 @@ onUnmounted(() => {
               <video v-stream="getOrCreateStream(track)" autoplay playsinline muted
                 class="w-full h-full transition-all duration-700"
                 :class="{
-                  'object-cover -scale-x-[1.01] scale-y-[1.01] is-mirrored': track.id === cameraTrack?.id,
+                  'object-cover scale-y-[1.01]': track.id === cameraTrack?.id,
+                  '-scale-x-[1.01] is-mirrored': track.id === cameraTrack?.id && currentFacingMode === 'user',
+                  'scale-x-[1.01]': track.id === cameraTrack?.id && currentFacingMode === 'environment',
                   'object-contain bg-black scale-100': track.id !== cameraTrack?.id
                 }"></video>
               <div

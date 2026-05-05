@@ -43,6 +43,7 @@ export function useVoiceRoom() {
   const isTotalMuted = ref(localStorage.getItem("isTotalMuted") === "true");
   const isVideoEnabled = ref(false);
   const isScreenSharing = ref(false);
+  const currentFacingMode = ref<"user" | "environment">("user");
   const cameraTrack = ref<MediaStreamTrack | null>(null);
   const screenTrack = ref<MediaStreamTrack | null>(null);
   const isNoiseSuppressionEnabled = ref(false); // По умолчанию выключено
@@ -814,7 +815,7 @@ export function useVoiceRoom() {
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: { facingMode: currentFacingMode.value },
         });
         const track = stream.getVideoTracks()[0];
         if (!track) throw new Error("No video track");
@@ -841,6 +842,16 @@ export function useVoiceRoom() {
         console.error("[WebRTC] Failed to get video track", err);
         error.value = "Нет доступа к камере";
       }
+    }
+  }
+
+  async function switchCamera() {
+    currentFacingMode.value =
+      currentFacingMode.value === "user" ? "environment" : "user";
+    if (isVideoEnabled.value) {
+      // If video is enabled, we need to stop current track and start new one
+      await toggleVideo(); // turn off
+      await toggleVideo(); // turn on with new mode
     }
   }
 
@@ -954,6 +965,7 @@ export function useVoiceRoom() {
     isMuted,
     isTotalMuted,
     isVideoEnabled,
+    currentFacingMode,
     isScreenSharing,
     isNoiseSuppressionEnabled,
     isConnected,
@@ -970,6 +982,7 @@ export function useVoiceRoom() {
     toggleMute,
     toggleTotalMute,
     toggleVideo,
+    switchCamera,
     toggleScreenShare,
     toggleNoiseSuppression,
   };
