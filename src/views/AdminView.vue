@@ -5,7 +5,8 @@ import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import Button from '@/components/ui/button/Button.vue'
-import { Users, RefreshCw } from 'lucide-vue-next'
+import Input from '@/components/ui/input/Input.vue'
+import { Users, RefreshCw, Lock } from 'lucide-vue-next'
 
 interface Room {
   id: string;
@@ -21,13 +22,30 @@ interface Room {
 const rooms = ref<Room[]>([])
 const loading = ref(false)
 const error = ref('')
+const isAuthenticated = ref(false)
+const username = ref('admin')
+const password = ref('')
 
 async function fetchRooms() {
+  if (!isAuthenticated.value) return;
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch('/api/rooms')
+    const credentials = btoa(`${username.value}:${password.value}`)
+    const res = await fetch('/api/rooms', {
+      headers: {
+        'Authorization': `Basic ${credentials}`
+      }
+    })
+    
+    if (res.status === 401) {
+      isAuthenticated.value = false
+      error.value = 'Invalid credentials'
+      return
+    }
+    
     if (!res.ok) throw new Error('Failed to fetch')
+    
     rooms.value = await res.json()
   } catch (e: any) {
     error.value = e.message || 'Error fetching rooms'
@@ -36,20 +54,61 @@ async function fetchRooms() {
   }
 }
 
-let interval: ReturnType<typeof setInterval>;
+async function login() {
+  error.value = ''
+  isAuthenticated.value = true
+  await fetchRooms()
+  if (isAuthenticated.value && !interval) {
+    interval = setInterval(fetchRooms, 10000)
+  }
+}
+
+let interval: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
-  fetchRooms()
-  interval = setInterval(fetchRooms, 10000)
+  if (isAuthenticated.value) {
+    fetchRooms()
+    interval = setInterval(fetchRooms, 10000)
+  }
 })
 
 onUnmounted(() => {
-  clearInterval(interval)
+  if (interval) clearInterval(interval)
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-neutral-950 p-4 sm:p-8 text-neutral-100">
+  <div class="min-h-screen bg-neutral-950 p-4 sm:p-8 text-neutral-100 flex items-center justify-center" v-if="!isAuthenticated">
+    <Card class="w-full max-w-sm bg-neutral-900 border-neutral-800">
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2 text-white justify-center text-2xl">
+          <Lock class="w-5 h-5 text-indigo-400" />
+          Admin Login
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form @submit.prevent="login" class="space-y-4">
+          <div v-if="error" class="bg-red-500/10 text-red-400 text-sm p-3 rounded border border-red-500/20 text-center">
+            {{ error }}
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-400">Username</label>
+            <Input v-model="username" placeholder="Username" class="bg-neutral-950 border-neutral-800 text-white" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-400">Password</label>
+            <Input v-model="password" type="password" placeholder="Password" class="bg-neutral-950 border-neutral-800 text-white" />
+          </div>
+          <Button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white" :disabled="loading">
+            <span v-if="loading">Logging in...</span>
+            <span v-else>Login</span>
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  </div>
+
+  <div v-else class="min-h-screen bg-neutral-950 p-4 sm:p-8 text-neutral-100">
     <div class="max-w-4xl mx-auto space-y-6">
       <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold tracking-tight text-white">Admin Dashboard</h1>

@@ -197,6 +197,26 @@ httpServer.on('request', (req, res) => {
   if (req.url === '/api/rooms' && req.method === 'GET') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization');
+    
+    const auth = req.headers['authorization'];
+    if (!auth) {
+      res.writeHead(401);
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    const b64auth = (auth || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'jamalAndCoAdminPassJajaja123';
+
+    if (login !== 'admin' || password !== expectedPassword ) {
+      res.writeHead(401);
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
     const activeRooms = [];
     for (const [roomId, socketIds] of rooms.entries()) {
       const roomParticipants = [];
@@ -219,6 +239,7 @@ httpServer.on('request', (req, res) => {
   } else if (req.url === '/api/rooms' && req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization');
     res.writeHead(204);
     res.end();
   }
