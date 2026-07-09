@@ -192,6 +192,38 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 8000
 const protocol = useHttps ? 'https' : 'http'
+
+httpServer.on('request', (req, res) => {
+  if (req.url === '/api/rooms' && req.method === 'GET') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    const activeRooms = [];
+    for (const [roomId, socketIds] of rooms.entries()) {
+      const roomParticipants = [];
+      for (const socketId of socketIds) {
+        const s = io.sockets.sockets.get(socketId);
+        if (s) {
+          roomParticipants.push({
+            id: s.id,
+            userName: s.userName,
+            streaming: streamingStatuses.get(s.id),
+            muteStatus: muteStatuses.get(s.id)
+          });
+        }
+      }
+      activeRooms.push({ id: roomId, participantsCount: socketIds.size, participants: roomParticipants });
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.writeHead(200);
+    res.end(JSON.stringify(activeRooms));
+  } else if (req.url === '/api/rooms' && req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.writeHead(204);
+    res.end();
+  }
+});
+
 httpServer.listen(PORT, () => {
   console.log(`Signaling server on ${protocol}://localhost:${PORT}`)
 })
