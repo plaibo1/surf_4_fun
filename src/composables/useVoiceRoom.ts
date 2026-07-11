@@ -1,8 +1,10 @@
 import { ref, computed, onUnmounted } from "vue";
 import { io } from "socket.io-client";
-import hark from "hark";
 import { useVolumeStorage } from "./useVolumeStorage";
 import { useSoundEffects } from "./useSoundEffects";
+import { useChat, type ChatMessage } from "./useChat";
+import { useSharedPlayer } from "./useSharedPlayer";
+import { useAudioAnalyzer } from "./useAudioAnalyzer";
 
 function getSocketUrl(): string {
   // В dev используем тот же origin — Vite проксирует /socket.io на бэкенд (избегаем SSL на порту 8000)
@@ -22,18 +24,12 @@ export interface Participant {
   audioElement?: HTMLAudioElement;
 }
 
-export interface ChatMessage {
-  id: string;
-  text: string;
-  senderId: string;
-  senderName: string;
-  timestamp: number;
-}
+export type { ChatMessage };
 
 export function useVoiceRoom() {
   const { saveVolume, getVolume: getStorageVolume } = useVolumeStorage();
   const { playJoinSound, playLeaveSound, initAudioContext } = useSoundEffects();
-  const socket = ref<ReturnType<typeof io> | null>(null);
+  const socket = ref<any | null>(null);
   const myId = ref<string | null>(null);
   const myStream = ref<MediaStream | null>(null);
   const participants = ref<Map<string, Participant>>(new Map());
@@ -51,109 +47,11 @@ export function useVoiceRoom() {
   const roomFull = ref(false);
   const error = ref<string | null>(null);
 
-  const messages = ref<ChatMessage[]>([]);
+  const { messages, setupChatListeners, sendMessage, clearMessages, setMessages } = useChat(socket, roomId);
+  const { sharedPlayerState, setupSharedPlayerListeners, sendPlayerCommand, clearPlayerState, setPlayerState } = useSharedPlayer(socket, roomId);
+  const { volumeKing, speakingMap, audioLevelMap, setupAudioAnalyzerListeners, trackSpeaking, stopTrackingSpeaking, clearAudioAnalyzerState, setVolumeKing } = useAudioAnalyzer(socket, roomId, myId, userName, (id) => participants.value.get(id)?.userName);
 
-  // SharedPlayer state
-  const sharedPlayerState = ref<{
-    url: string | null;
-    platform: string | null;
-    playing: boolean;
-    currentTime: number;
-    lastUpdate: number;
-  }>({
-    url: null,
-    platform: null,
-    playing: false,
-    currentTime: 0,
-    lastUpdate: Date.now(),
-  });
 
-  // Volume King tracking
-  const volumeKing = ref<{
-    id: string;
-    name: string;
-    maxVolume: number;
-  } | null>(null);
-  const VOLUME_KING_THRESHOLD = -20; // dB threshold for considering someone a "Volume King" (loud speaking/shouting)
-
-  // Hark integration
-  const speakingMap = ref<Record<string, boolean>>({});
-  const audioLevelMap = ref<Record<string, number>>({});
-  const speechEventsMap = new Map<string, hark.Harker>();
-
-  function trackSpeaking(streamId: string, stream: MediaStream) {
-    if (!stream.getAudioTracks().length) return;
-
-    if (speechEventsMap.has(streamId)) {
-      speechEventsMap.get(streamId)?.stop();
-    }
-
-    const speechEvents = hark(stream, {
-      threshold: -65, // Lower threshold to make it pick up sound easier
-      interval: 50, // faster checks
-    });
-
-    speechEvents.on("speaking", () => {
-      speakingMap.value = { ...speakingMap.value, [streamId]: true };
-    });
-
-    speechEvents.on("stopped_speaking", () => {
-      speakingMap.value = { ...speakingMap.value, [streamId]: false };
-      audioLevelMap.value = { ...audioLevelMap.value, [streamId]: 0 };
-    });
-
-    speechEvents.on("volume_change", (currentVolume) => {
-      // Map volume from roughly -70dB (quiet) to -10dB (loud) to a 0-1 scale
-      const level = Math.max(0, Math.min(1, (currentVolume + 70) / 60));
-      audioLevelMap.value = { ...audioLevelMap.value, [streamId]: level };
-
-      // Volume King Logic - only consider if they are louder than threshold AND louder than current record
-      if (currentVolume > VOLUME_KING_THRESHOLD) {
-        if (!volumeKing.value || currentVolume > volumeKing.value.maxVolume) {
-          const isMe = streamId === myId.value;
-          const uname = isMe
-            ? userName.value
-            : participants.value.get(streamId)?.userName;
-          if (uname) {
-            const newKing = {
-              id: streamId,
-              name: uname,
-              maxVolume: currentVolume,
-            };
-            volumeKing.value = newKing;
-            // Broadcast the new king to the room
-            socket.value?.emit("new-volume-king", {
-              roomId: roomId.value,
-              volumeKing: newKing,
-            });
-          }
-        }
-      }
-    });
-
-    speechEventsMap.set(streamId, speechEvents);
-    speakingMap.value = { ...speakingMap.value, [streamId]: false };
-    audioLevelMap.value = { ...audioLevelMap.value, [streamId]: 0 };
-  }
-
-  function stopTrackingSpeaking(streamId?: string) {
-    if (streamId) {
-      speechEventsMap.get(streamId)?.stop();
-      speechEventsMap.delete(streamId);
-      const newMap = { ...speakingMap.value };
-      delete newMap[streamId];
-      speakingMap.value = newMap;
-
-      const newLevelMap = { ...audioLevelMap.value };
-      delete newLevelMap[streamId];
-      audioLevelMap.value = newLevelMap;
-    } else {
-      speechEventsMap.forEach((events) => events.stop());
-      speechEventsMap.clear();
-      speakingMap.value = {};
-      audioLevelMap.value = {};
-    }
-  }
 
   const participantList = computed(() =>
     Array.from(participants.value.values()).map((p) => ({
@@ -463,12 +361,12 @@ export function useVoiceRoom() {
         myId.value = yourId;
         isConnected.value = true;
         playJoinSound();
-        messages.value = roomMessages || [];
+        setMessages(roomMessages || []);
         if (roomSharedPlayerState) {
-          sharedPlayerState.value = roomSharedPlayerState;
+          setPlayerState(roomSharedPlayerState);
         }
         if (roomKing) {
-          volumeKing.value = roomKing;
+          setVolumeKing(roomKing);
         }
         if (myStream.value) {
           trackSpeaking(yourId, myStream.value);
@@ -489,9 +387,9 @@ export function useVoiceRoom() {
       leave();
     });
 
-    s.on("player-state-update", (state: typeof sharedPlayerState.value) => {
-      sharedPlayerState.value = state;
-    });
+    setupSharedPlayerListeners(s);
+    setupAudioAnalyzerListeners(s);
+    setupChatListeners(s);
 
     s.on(
       "participant-joined",
@@ -569,16 +467,7 @@ export function useVoiceRoom() {
       },
     );
 
-    s.on(
-      "volume-king-updated",
-      (newKing: { id: string; name: string; maxVolume: number } | null) => {
-        volumeKing.value = newKing;
-      },
-    );
 
-    s.on("new-message", (msg: ChatMessage) => {
-      messages.value.push(msg);
-    });
 
     s.on("participant-left", ({ id: remoteId }: { id: string }) => {
       const p = participants.value.get(remoteId);
@@ -680,23 +569,7 @@ export function useVoiceRoom() {
     });
   }
 
-  function sendMessage(text: string) {
-    if (!text.trim() || !socket.value) return;
-    socket.value.emit("send-message", { roomId: roomId.value, text });
-  }
 
-  function sendPlayerCommand(command: {
-    type: "load" | "play" | "pause" | "seek";
-    url?: string;
-    platform?: string;
-    currentTime?: number;
-  }) {
-    if (!socket.value || !roomId.value) return;
-    socket.value.emit("player-command", {
-      roomId: roomId.value,
-      command,
-    });
-  }
 
   function leave() {
     socket.value?.disconnect();
@@ -727,14 +600,9 @@ export function useVoiceRoom() {
     roomId.value = "";
     userName.value = "";
     peerVolumes.value = {};
-    messages.value = [];
-    sharedPlayerState.value = {
-      url: null,
-      platform: null,
-      playing: false,
-      currentTime: 0,
-      lastUpdate: Date.now(),
-    };
+    clearMessages();
+    clearPlayerState();
+    clearAudioAnalyzerState();
   }
 
   function toggleMute() {
