@@ -85,9 +85,10 @@ function onSubmit() {
         </div>
       </CardHeader>
 
-      <CardContent class="px-4 sm:px-8 pb-10 space-y-6">
-        <!-- Поле Имя -->
-        <div class="space-y-0 relative">
+      <CardContent class="px-4 sm:px-8 pb-10">
+        <form @submit.prevent="onSubmit" class="space-y-6">
+          <!-- Поле Имя -->
+          <div class="space-y-0 relative">
           <label class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5"
             :class="{ 'text-primary animate-pulse': roomId && !userName }">
             Как тебя зовут?
@@ -151,8 +152,9 @@ function onSubmit() {
 
         <!-- Кнопка входа -->
         <Button
+          type="submit"
           class="w-full h-16 rounded-2xl text-lg font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] group cursor-pointer"
-          @click="onSubmit" :disabled="!roomId.trim() || !userName.trim()">
+          :disabled="!roomId.trim() || !userName.trim()">
           <template v-if="roomId.trim() && !userName.trim()">
             Напиши ник
           </template>
@@ -161,6 +163,7 @@ function onSubmit() {
           </template>
           <ArrowRight class="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
         </Button>
+        </form>
       </CardContent>
     </Card>
 
