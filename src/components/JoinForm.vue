@@ -69,8 +69,8 @@ function onSubmit() {
   <div class="w-full animate-in fade-in slide-in-from-bottom-8 duration-700">
     <div class="space-y-8">
       <div class="space-y-2">
-        <h2 class="text-2xl font-bold tracking-tight">Enter the Grid</h2>
-        <p class="text-sm text-muted-foreground">Identify yourself to join a session.</p>
+        <h2 class="text-2xl font-bold tracking-tight">Вход в комнату</h2>
+        <p class="text-sm text-muted-foreground">Укажите ваше имя и ID комнаты для подключения.</p>
       </div>
 
       <form @submit.prevent="onSubmit" class="space-y-6">
@@ -78,14 +78,14 @@ function onSubmit() {
         <div class="space-y-2 relative group">
           <label for="userNameInput" class="text-xs font-bold uppercase tracking-widest text-muted-foreground group-focus-within:text-primary transition-colors flex justify-between"
             :class="{ 'text-primary animate-pulse': roomId && !userName }">
-            <span>[01] Callsign</span>
-            <span v-if="roomId && !userName" class="text-primary italic normal-case tracking-normal">— Required</span>
+            <span>[01] Ваше имя</span>
+            <span v-if="roomId && !userName" class="text-primary italic normal-case tracking-normal">— Обязательно</span>
           </label>
           <div class="relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
               <User class="h-4 w-4" />
             </div>
-            <Input id="userNameInput" name="username" autocomplete="username" ref="userNameInput" v-model="userName" :placeholder="`e.g. ${randomPlaceholder}`"
+            <Input id="userNameInput" name="username" autocomplete="username" ref="userNameInput" v-model="userName" :placeholder="`напр. ${randomPlaceholder}`"
               class="h-14 pl-12 pr-4 rounded-2xl border border-white/10 bg-black/50 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary transition-all text-base font-bold w-full"
               :class="{ 'border-primary ring-1 ring-primary bg-primary/5': roomId && !userName }" maxlength="20"
               @keyup.enter="onSubmit" />
@@ -96,22 +96,25 @@ function onSubmit() {
         <div class="space-y-2 relative group">
           <label for="roomIdInput"
             class="text-xs font-bold uppercase tracking-widest text-muted-foreground group-focus-within:text-primary transition-colors block">
-            [02] Node ID
+            [02] Название комнаты
           </label>
           <div class="relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
               <Hash class="h-4 w-4" />
             </div>
-            <Input id="roomIdInput" name="room" autocomplete="off" v-model="roomId" placeholder="Enter room ID..."
+            <Input id="roomIdInput" name="room" autocomplete="off" v-model="roomId" placeholder="Придумайте любое название..."
               class="h-14 pl-12 pr-4 rounded-2xl border border-white/10 bg-black/50 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary transition-all text-base font-bold uppercase tracking-widest w-full"
               @keyup.enter="onSubmit" @input="roomId = roomId.toLowerCase()" />
           </div>
+          <p class="text-xs text-muted-foreground/80 mt-1.5 ml-1">
+            Если комнаты с таким названием нет — она будет создана.
+          </p>
 
           <!-- Любимые комнаты -->
           <div v-if="favorites.length > 0" class="mt-4 animate-in fade-in slide-in-from-top-2 duration-500">
             <div class="flex items-center gap-2 mb-3">
               <Star class="h-3 w-3 text-primary" />
-              <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Known Nodes</span>
+              <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Избранные комнаты</span>
             </div>
             <div class="flex flex-wrap gap-2">
               <button v-for="fav in favorites" :key="fav" type="button" @click="selectRoom(fav)"
@@ -128,8 +131,8 @@ function onSubmit() {
         <div class="flex items-start gap-3 p-4 rounded-2xl bg-black/40 border-l-2 border-primary/50 text-muted-foreground">
           <div class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 animate-pulse shrink-0 shadow-[0_0_8px_rgba(0,255,100,0.8)]"></div>
           <p class="text-xs font-mono leading-relaxed">
-            P2P connection established. Max 5 peers per node. <br />
-            End-to-end encrypted. No trace.
+            Прямое подключение (до 5 участников). <br class="hidden sm:block" />
+            Аудио и видео передаются по сети P2P.
           </p>
         </div>
 
@@ -140,10 +143,10 @@ function onSubmit() {
           :disabled="!roomId.trim() || !userName.trim()">
           <span class="flex items-center gap-3">
             <template v-if="roomId.trim() && !userName.trim()">
-              Awaiting Callsign
+              Введите имя
             </template>
             <template v-else>
-              Initialize Connection
+              Войти в комнату
             </template>
             <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </span>

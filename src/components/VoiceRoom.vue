@@ -310,16 +310,16 @@ onUnmounted(() => {
             </div>
 
             <div
-              class="flex items-center gap-1 sm:gap-2 bg-background/80 backdrop-blur-sm p-1 sm:p-2 rounded-3xl sm:rounded-3xl border border-primary/10 shadow-inner">
+              class="flex items-center gap-1 sm:gap-2 bg-background/80 backdrop-blur-sm p-1 sm:p-2 rounded-[24px] sm:rounded-[24px] border border-primary/10 shadow-inner">
               <Button :variant="isNoiseSuppressionEnabled ? 'success' : 'ghost'" size="icon"
                 @click="toggleNoiseSuppression"
-                class="h-9 w-9 sm:h-11 sm:w-11 rounded-3xl sm:rounded-3xl transition-all hover:scale-105 active:scale-95"
+                class="h-9 w-9 sm:h-11 sm:w-11 rounded-[16px] sm:rounded-[16px] transition-all hover:scale-105 active:scale-95"
                 title="Подавление шума" aria-label="Подавление шума">
                 <Ear class="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <div class="h-6 sm:h-8 w-[1px] bg-border/50 mx-0.5 sm:mx-1"></div>
               <Button :variant="isTotalMuted ? 'destructive' : 'ghost'" @click="toggleTotalMute" size="icon"
-                class="h-9 w-9 sm:h-11 sm:w-11 rounded-3xl sm:rounded-3xl transition-all hover:scale-105 active:scale-95 group relative overflow-hidden"
+                class="h-9 w-9 sm:h-11 sm:w-11 rounded-[16px] sm:rounded-[16px] transition-all hover:scale-105 active:scale-95 group relative overflow-hidden"
                 title="Тотальный мут" aria-label="Тотальный мут">
                 <div v-if="isTotalMuted" class="relative z-10 flex items-center justify-center">
                   <Headphones class="h-4 w-4 sm:h-5 sm:w-5" />
@@ -328,7 +328,7 @@ onUnmounted(() => {
                 <Headphones v-else class="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" size="icon"
-                class="h-9 w-9 sm:h-11 sm:w-11 rounded-3xl sm:rounded-3xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
+                class="h-9 w-9 sm:h-11 sm:w-11 rounded-[16px] sm:rounded-[16px] transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
                 title="Микрофон" aria-label="Включить/выключить микрофон">
                 <MicOff v-if="isMuted" class="h-4 w-4 sm:h-5 sm:w-5" />
                 <Mic v-else class="h-4 w-4 sm:h-5 sm:w-5" />

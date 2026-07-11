@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import VoiceRoom from '@/components/VoiceRoom.vue'
 import JoinForm from '@/components/JoinForm.vue'
+import Disclaimer from '@/components/Disclaimer.vue'
 
 const inRoom = ref(false)
 const pendingRoomId = ref('')
@@ -47,22 +48,15 @@ function onLeave() {
             </div>
 
             <h1 class="text-6xl xl:text-8xl font-bold tracking-tighter leading-none mb-6">
-              Drop in. <br/>
-              <span class="text-primary italic pr-4">Hang out.</span>
+              Создай. <br/>
+              <span class="text-primary italic pr-4">Общайся.</span>
             </h1>
             <p class="text-lg text-muted-foreground max-w-[40ch] leading-relaxed">
-              No signups. No friction. Just instant voice and video rooms for you and your friends.
+              Без регистраций. Без барьеров. Мгновенные голосовые и видео-комнаты для тебя и друзей.
             </p>
           </div>
 
-          <div class="relative z-10 flex items-center justify-between">
-            <div class="text-sm font-medium tracking-widest uppercase text-muted-foreground">
-              [ SYSTEM ONLINE ]
-            </div>
-            <div class="text-sm font-medium tracking-widest uppercase text-muted-foreground">
-              V 2.0.0
-            </div>
-          </div>
+          <Disclaimer class="relative z-10 text-muted-foreground/50 max-w-[90%]" />
         </div>
 
         <!-- Right Side: Form -->
@@ -79,14 +73,17 @@ function onLeave() {
               </div>
             </div>
             <h1 class="text-4xl sm:text-5xl font-bold tracking-tighter leading-none">
-              Drop in.<br/>
-              <span class="text-primary italic">Hang out.</span>
+              Создай.<br/>
+              <span class="text-primary italic">Общайся.</span>
             </h1>
           </div>
           
           <div class="w-full max-w-md relative z-10">
             <JoinForm @joined="onJoined" />
           </div>
+
+          <!-- Mobile Disclaimer -->
+          <Disclaimer class="lg:hidden w-full max-w-md mt-12 relative z-10 text-muted-foreground/40 text-center" />
         </div>
       </div>
     </template>
