@@ -77,11 +77,11 @@ function toggleFullscreen(event: Event) {
       </div>
 
       <div class="flex items-center bg-muted/50 p-1 rounded-lg sm:rounded-xl border border-border/50">
-        <Button variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-lg transition-all"
+        <Button aria-label="Вид сеткой" variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-lg transition-all"
           :class="{ 'bg-background shadow-sm text-primary': viewMode === 'grid' }" @click="emit('update:viewMode', 'grid')">
           <LayoutGrid class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </Button>
-        <Button variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-lg transition-all"
+        <Button aria-label="Вид списком" variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-lg transition-all"
           :class="{ 'bg-background shadow-sm text-primary': viewMode === 'row' }" @click="emit('update:viewMode', 'row')">
           <LayoutList class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </Button>
@@ -133,9 +133,9 @@ function toggleFullscreen(event: Event) {
                 <Mic v-else class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-green-400" />
               </div>
             </div>
-            <button @click.stop="toggleFullscreen"
+            <button aria-label="На весь экран" @click.stop="toggleFullscreen"
               class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg sm:rounded-xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
-              <Scan class="w-3 w-3 sm:w-4 sm:h-4" />
+              <Scan class="h-3 w-3 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
@@ -178,9 +178,9 @@ function toggleFullscreen(event: Event) {
                   <Video v-else class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white/60" />
                 </div>
               </div>
-              <button @click.stop="toggleFullscreen"
+              <button aria-label="На весь экран" @click.stop="toggleFullscreen"
                 class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg sm:rounded-xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
-                <Scan class="w-3 w-3 sm:w-4 sm:h-4" />
+                <Scan class="h-3 w-3 sm:w-4 sm:h-4" />
               </button>
             </div>
           </div>

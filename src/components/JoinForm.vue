@@ -89,7 +89,7 @@ function onSubmit() {
         <form @submit.prevent="onSubmit" class="space-y-6">
           <!-- Поле Имя -->
           <div class="space-y-0 relative">
-          <label class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5"
+          <label for="userNameInput" class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5"
             :class="{ 'text-primary animate-pulse': roomId && !userName }">
             Как тебя зовут?
             <span v-if="roomId && !userName" class="text-primary italic">— Напиши свой ник!</span>
@@ -99,7 +99,7 @@ function onSubmit() {
               class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
               <User class="h-5 w-5" />
             </div>
-            <Input ref="userNameInput" v-model="userName" :placeholder="`Например: ${randomPlaceholder}`"
+            <Input id="userNameInput" name="username" autocomplete="username" ref="userNameInput" v-model="userName" :placeholder="`Например: ${randomPlaceholder}`"
               class="h-14 pl-12 pr-4 rounded-2xl border-none bg-background/50 shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-base font-bold"
               :class="{ 'ring-2 ring-primary/40 bg-primary/5': roomId && !userName }" maxlength="20"
               @keyup.enter="onSubmit" />
@@ -110,7 +110,7 @@ function onSubmit() {
 
         <!-- Поле ID комнаты -->
         <div class="space-y-0">
-          <label
+          <label for="roomIdInput"
             class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5">Куда
             входим?</label>
           <div class="relative group">
@@ -118,7 +118,7 @@ function onSubmit() {
               class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
               <Hash class="h-5 w-5" />
             </div>
-            <Input v-model="roomId" placeholder="ID или название комнаты"
+            <Input id="roomIdInput" name="room" autocomplete="off" v-model="roomId" placeholder="ID или название комнаты"
               class="h-14 pl-12 pr-4 rounded-2xl border-none bg-background/50 shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-base font-bold uppercase tracking-tight"
               @keyup.enter="onSubmit" @input="roomId = roomId.toLowerCase()" />
           </div>

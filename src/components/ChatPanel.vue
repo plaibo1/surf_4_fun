@@ -104,8 +104,8 @@ function handleLinkClick(part: any) {
             :class="msg.senderId === myId ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-card border border-border/50 text-foreground rounded-tl-none'">
             <div class="text-[11px] sm:text-xs font-medium leading-relaxed whitespace-pre-wrap">
               <template v-for="part in parseMessage(msg.text)" :key="part.id">
-                <span v-if="part.isLink"
-                  class="inline-flex items-center gap-1.5 align-middle bg-black/10 dark:bg-white/5 px-1 sm:px-1.5 py-0.5 rounded-lg cursor-pointer group/link transition-all hover:bg-black/20 dark:hover:bg-white/10 active:scale-95"
+                <button type="button" v-if="part.isLink"
+                  class="inline-flex items-center gap-1.5 align-middle bg-black/10 dark:bg-white/5 px-1 sm:px-1.5 py-0.5 rounded-lg cursor-pointer group/link transition-all hover:bg-black/20 dark:hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   @click="handleLinkClick(part)">
                   <template v-if="part.isCS">
                     <Swords class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-orange-400 shrink-0" />
@@ -119,7 +119,7 @@ function handleLinkClick(part: any) {
                   <span
                     class="underline underline-offset-2 transition-all font-bold select-none truncate max-w-[120px] sm:max-w-[180px]"
                     :class="msg.senderId === myId ? 'text-white' : 'text-primary'">{{ part.text }}</span>
-                </span>
+                </button>
                 <span v-else>{{ part.text }}</span>
               </template>
             </div>
@@ -133,9 +133,9 @@ function handleLinkClick(part: any) {
       </div>
       <div class="p-2 sm:p-3 bg-muted/40 border-t backdrop-blur-xl">
         <form @submit.prevent="onSendMessage" class="flex items-center gap-2">
-          <Input v-model="newMessage" placeholder="Сообщение..."
-            class="flex-1 h-9 sm:h-10 rounded-lg sm:rounded-xl border-none bg-background/60 shadow-inner text-[11px] sm:text-xs px-3" />
-          <Button type="submit" size="icon" class="h-9 w-9 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl"
+          <Input id="chatMessageInput" name="message" autocomplete="off" aria-label="Сообщение" v-model="newMessage" placeholder="Сообщение..."
+            class="flex-1 h-9 sm:h-10 rounded-lg sm:rounded-xl border-none bg-background/60 shadow-inner text-[11px] sm:text-xs px-3 focus-visible:ring-2 focus-visible:ring-primary" />
+          <Button aria-label="Отправить сообщение" type="submit" size="icon" class="h-9 w-9 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl"
             :disabled="!newMessage.trim()">
             <Send class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Button>

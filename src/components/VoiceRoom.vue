@@ -301,9 +301,9 @@ onUnmounted(() => {
               <div
                 class="absolute -bottom-1 -right-1 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border-2 sm:border-4 border-background shadow-lg transition-colors duration-300"
                 :class="isMuted ? 'bg-destructive' : 'bg-green-500'">
-                <HeadphoneOff v-if="isTotalMuted" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
-                <MicOff v-else-if="isMuted" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
-                <Mic v-else class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
+                <HeadphoneOff v-if="isTotalMuted" aria-hidden="true" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
+                <MicOff v-else-if="isMuted" aria-hidden="true" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
+                <Mic v-else aria-hidden="true" class="h-3 sm:h-3.5 w-3 sm:w-3.5 text-white" />
               </div>
             </div>
 

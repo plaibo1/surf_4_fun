@@ -36,11 +36,11 @@ const emit = defineEmits<{
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <p class="font-bold text-xs sm:text-sm truncate">{{ p.userName }}</p>
-            <HeadphoneOff v-if="p.muteStatus?.isTotalMuted" class="h-3 w-3 text-destructive" />
-            <MicOff v-else-if="p.muteStatus?.isMuted" class="h-3 w-3 text-destructive" />
+            <HeadphoneOff v-if="p.muteStatus?.isTotalMuted" aria-hidden="true" class="h-3 w-3 text-destructive" />
+            <MicOff v-else-if="p.muteStatus?.isMuted" aria-hidden="true" class="h-3 w-3 text-destructive" />
           </div>
           <div class="flex items-center gap-2 mt-1">
-            <Slider :model-value="[p.volume]" :min="0" :max="100" :step="1" class="flex-1 h-1"
+            <Slider aria-label="Громкость" :model-value="[p.volume]" :min="0" :max="100" :step="1" class="flex-1 h-1"
               @update:model-value="(v) => emit('setVolume', p.id, v?.[0] ?? 100)" />
             <span class="text-[9px] sm:text-[10px] font-mono text-muted-foreground w-8 text-right">{{
               p.volume }}%</span>
@@ -53,7 +53,7 @@ const emit = defineEmits<{
           <div class="absolute inset-0 bg-primary/10 blur-2xl rounded-full"></div>
           <div
             class="relative w-12 h-12 sm:w-16 sm:h-16 bg-primary/5 rounded-full flex items-center justify-center border border-primary/10 shadow-inner">
-            <Ghost class="h-6 w-6 sm:h-8 sm:w-8 text-primary/30" />
+            <Ghost aria-hidden="true" class="h-6 w-6 sm:h-8 sm:w-8 text-primary/30" />
           </div>
         </div>
 
