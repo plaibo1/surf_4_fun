@@ -66,111 +66,89 @@ function onSubmit() {
 </script>
 
 <template>
-  <div class="w-full max-w-md animate-in fade-in zoom-in duration-500 relative">
-    <Card class="border-none shadow-2xl bg-gradient-to-br from-card to-muted/30 overflow-hidden relative z-10">
-      <CardHeader class="pt-8 sm:pt-10 pb-4 sm:pb-6 text-center">
-        <div
-          class="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 sm:mb-6 ring-1 ring-primary/10 shadow-2xl overflow-hidden">
-          <img src="/logo.webp" alt="Surf 4 Fun Logo"
-            class="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500" />
-        </div>
-        <div class="relative inline-block mx-auto">
-          <CardTitle class="text-3xl sm:text-4xl font-black tracking-tighter text-foreground uppercase">
-            Surf 4 Fun
-          </CardTitle>
-          <span
-            class="absolute -bottom-4 right-0 text-[10px] font-black uppercase tracking-widest text-primary/60 italic">
-            by Jamal
-          </span>
-        </div>
-      </CardHeader>
+  <div class="w-full animate-in fade-in slide-in-from-bottom-8 duration-700">
+    <div class="space-y-8">
+      <div class="space-y-2">
+        <h2 class="text-2xl font-bold tracking-tight">Enter the Grid</h2>
+        <p class="text-sm text-muted-foreground">Identify yourself to join a session.</p>
+      </div>
 
-      <CardContent class="px-4 sm:px-8 pb-10">
-        <form @submit.prevent="onSubmit" class="space-y-6">
-          <!-- Поле Имя -->
-          <div class="space-y-0 relative">
-          <label for="userNameInput" class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5"
+      <form @submit.prevent="onSubmit" class="space-y-6">
+        <!-- Поле Имя -->
+        <div class="space-y-2 relative group">
+          <label for="userNameInput" class="text-xs font-bold uppercase tracking-widest text-muted-foreground group-focus-within:text-primary transition-colors flex justify-between"
             :class="{ 'text-primary animate-pulse': roomId && !userName }">
-            Как тебя зовут?
-            <span v-if="roomId && !userName" class="text-primary italic">— Напиши свой ник!</span>
+            <span>[01] Callsign</span>
+            <span v-if="roomId && !userName" class="text-primary italic normal-case tracking-normal">— Required</span>
           </label>
-          <div class="relative group">
-            <div
-              class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
-              <User class="h-5 w-5" />
+          <div class="relative">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
+              <User class="h-4 w-4" />
             </div>
-            <Input id="userNameInput" name="username" autocomplete="username" ref="userNameInput" v-model="userName" :placeholder="`Например: ${randomPlaceholder}`"
-              class="h-14 pl-12 pr-4 rounded-2xl border-none bg-background/50 shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-base font-bold"
-              :class="{ 'ring-2 ring-primary/40 bg-primary/5': roomId && !userName }" maxlength="20"
+            <Input id="userNameInput" name="username" autocomplete="username" ref="userNameInput" v-model="userName" :placeholder="`e.g. ${randomPlaceholder}`"
+              class="h-14 pl-12 pr-4 rounded-2xl border border-white/10 bg-black/50 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary transition-all text-base font-bold w-full"
+              :class="{ 'border-primary ring-1 ring-primary bg-primary/5': roomId && !userName }" maxlength="20"
               @keyup.enter="onSubmit" />
           </div>
-          <p class="text-[9px] text-muted-foreground/40 mt-1 ml-1 font-bold uppercase tracking-tighter">Макс. 20
-            символов</p>
         </div>
 
         <!-- Поле ID комнаты -->
-        <div class="space-y-0">
+        <div class="space-y-2 relative group">
           <label for="roomIdInput"
-            class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 block mb-1.5">Куда
-            входим?</label>
-          <div class="relative group">
-            <div
-              class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
-              <Hash class="h-5 w-5" />
+            class="text-xs font-bold uppercase tracking-widest text-muted-foreground group-focus-within:text-primary transition-colors block">
+            [02] Node ID
+          </label>
+          <div class="relative">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
+              <Hash class="h-4 w-4" />
             </div>
-            <Input id="roomIdInput" name="room" autocomplete="off" v-model="roomId" placeholder="ID или название комнаты"
-              class="h-14 pl-12 pr-4 rounded-2xl border-none bg-background/50 shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-base font-bold uppercase tracking-tight"
+            <Input id="roomIdInput" name="room" autocomplete="off" v-model="roomId" placeholder="Enter room ID..."
+              class="h-14 pl-12 pr-4 rounded-2xl border border-white/10 bg-black/50 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary transition-all text-base font-bold uppercase tracking-widest w-full"
               @keyup.enter="onSubmit" @input="roomId = roomId.toLowerCase()" />
           </div>
 
           <!-- Любимые комнаты -->
           <div v-if="favorites.length > 0" class="mt-4 animate-in fade-in slide-in-from-top-2 duration-500">
-            <div class="flex items-center gap-2 mb-2 px-1">
-              <Star class="h-3 w-3 text-yellow-500 fill-yellow-500" />
-              <span class="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Избранные</span>
+            <div class="flex items-center gap-2 mb-3">
+              <Star class="h-3 w-3 text-primary" />
+              <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Known Nodes</span>
             </div>
             <div class="flex flex-wrap gap-2">
               <button v-for="fav in favorites" :key="fav" type="button" @click="selectRoom(fav)"
-                class="px-3 py-1.5 rounded-xl bg-background/40 hover:bg-primary/10  border border-transparent hover:border-primary/20 transition-all text-xs font-bold text-foreground/80 hover:text-primary active:scale-95 flex items-center gap-1.5 group cursor-pointer"
-                :class="{ 'bg-primary/10 border-primary/20 text-primary': roomId === fav }">
-                <span class="truncate max-w-[100px]">{{ fav }}</span>
-                <ArrowRight
-                  class="h-3 w-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                class="px-3 py-2 border border-white/10 rounded-xl bg-black/40 hover:border-primary hover:bg-primary/10 transition-all text-xs font-mono text-muted-foreground hover:text-primary active:scale-95 flex items-center gap-2 group cursor-pointer"
+                :class="{ 'border-primary bg-primary/10 text-primary': roomId === fav }">
+                <span class="truncate max-w-[120px]">{{ fav }}</span>
+                <ArrowRight class="h-3 w-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
               </button>
             </div>
           </div>
         </div>
 
         <!-- Доп инфо -->
-        <div class="flex items-start gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/10">
-          <div class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 animate-pulse"></div>
-          <p class="text-xs font-medium text-primary/80 leading-relaxed">
-            Комнаты приватные. Максимум 5 человек. <br />
-            Никакой регистрации — просто заходи.
+        <div class="flex items-start gap-3 p-4 rounded-2xl bg-black/40 border-l-2 border-primary/50 text-muted-foreground">
+          <div class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 animate-pulse shrink-0 shadow-[0_0_8px_rgba(0,255,100,0.8)]"></div>
+          <p class="text-xs font-mono leading-relaxed">
+            P2P connection established. Max 5 peers per node. <br />
+            End-to-end encrypted. No trace.
           </p>
         </div>
 
         <!-- Кнопка входа -->
         <Button
           type="submit"
-          class="w-full h-16 rounded-2xl text-lg font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] group cursor-pointer"
+          class="w-full h-16 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-bold uppercase tracking-widest transition-all hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(var(--color-primary),0.3)] active:scale-[0.98] active:translate-y-0 group cursor-pointer disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
           :disabled="!roomId.trim() || !userName.trim()">
-          <template v-if="roomId.trim() && !userName.trim()">
-            Напиши ник
-          </template>
-          <template v-else>
-            Войти
-          </template>
-          <ArrowRight class="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+          <span class="flex items-center gap-3">
+            <template v-if="roomId.trim() && !userName.trim()">
+              Awaiting Callsign
+            </template>
+            <template v-else>
+              Initialize Connection
+            </template>
+            <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </span>
         </Button>
-        </form>
-      </CardContent>
-    </Card>
-
-    <footer class="mt-8 text-center">
-      <p class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">
-        &copy; {{ new Date().getFullYear() }} Surf 4 Fun &bull; No Strings Attached
-      </p>
-    </footer>
+      </form>
+    </div>
   </div>
 </template>

@@ -70,11 +70,11 @@ function handleLinkClick(part: any) {
 
 <template>
   <Card
-    class="border-none shadow-2xl bg-gradient-to-br from-card to-muted/20 overflow-hidden flex flex-col h-[400px] rounded-none sm:rounded-2xl">
+    class="border-none shadow-2xl bg-gradient-to-br from-card to-muted/20 overflow-hidden flex flex-col h-[400px] rounded-3xl sm:rounded-3xl">
     <CardHeader class="border-b bg-muted/30 pb-3 px-4 sm:px-6">
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-2">
-          <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+          <div class="p-1.5 rounded-3xl bg-primary/10 text-primary">
             <MessageSquare class="h-4 w-4" />
           </div>
           <CardTitle class="text-base sm:text-lg font-black tracking-tight">Чат</CardTitle>
@@ -100,12 +100,12 @@ function handleLinkClick(part: any) {
               msg.senderName
             }}</span>
           <div
-            class="group relative max-w-[90%] px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm transition-all"
+            class="group relative max-w-[90%] px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-3xl sm:rounded-3xl shadow-sm transition-all"
             :class="msg.senderId === myId ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-card border border-border/50 text-foreground rounded-tl-none'">
             <div class="text-[11px] sm:text-xs font-medium leading-relaxed whitespace-pre-wrap">
               <template v-for="part in parseMessage(msg.text)" :key="part.id">
                 <button type="button" v-if="part.isLink"
-                  class="inline-flex items-center gap-1.5 align-middle bg-black/10 dark:bg-white/5 px-1 sm:px-1.5 py-0.5 rounded-lg cursor-pointer group/link transition-all hover:bg-black/20 dark:hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  class="inline-flex items-center gap-1.5 align-middle bg-black/10 dark:bg-white/5 px-1 sm:px-1.5 py-0.5 rounded-3xl cursor-pointer group/link transition-all hover:bg-black/20 dark:hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   @click="handleLinkClick(part)">
                   <template v-if="part.isCS">
                     <Swords class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-orange-400 shrink-0" />
@@ -134,8 +134,8 @@ function handleLinkClick(part: any) {
       <div class="p-2 sm:p-3 bg-muted/40 border-t backdrop-blur-xl">
         <form @submit.prevent="onSendMessage" class="flex items-center gap-2">
           <Input id="chatMessageInput" name="message" autocomplete="off" aria-label="Сообщение" v-model="newMessage" placeholder="Сообщение..."
-            class="flex-1 h-9 sm:h-10 rounded-lg sm:rounded-xl border-none bg-background/60 shadow-inner text-[11px] sm:text-xs px-3 focus-visible:ring-2 focus-visible:ring-primary" />
-          <Button aria-label="Отправить сообщение" type="submit" size="icon" class="h-9 w-9 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl"
+            class="flex-1 h-9 sm:h-10 rounded-3xl sm:rounded-3xl border-none bg-background/60 shadow-inner text-[11px] sm:text-xs px-3 focus-visible:ring-2 focus-visible:ring-primary" />
+          <Button aria-label="Отправить сообщение" type="submit" size="icon" class="h-9 w-9 sm:h-10 sm:w-10 rounded-3xl sm:rounded-3xl"
             :disabled="!newMessage.trim()">
             <Send class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Button>

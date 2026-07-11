@@ -69,19 +69,19 @@ function toggleFullscreen(event: Event) {
 </script>
 
 <template>
-  <Card class="border-none bg-black/5 dark:bg-white/5 shadow-2xl overflow-hidden h-fit rounded-none sm:rounded-2xl">
+  <Card class="border-none bg-black/5 dark:bg-white/5 shadow-2xl overflow-hidden h-fit rounded-3xl sm:rounded-3xl">
     <CardHeader class="flex flex-row items-center justify-between border-b border-primary/5 pb-4 px-4 sm:px-6">
       <div class="flex items-center gap-2">
         <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div>
         <CardTitle class="text-lg sm:text-xl font-black uppercase tracking-tighter">Live</CardTitle>
       </div>
 
-      <div class="flex items-center bg-muted/50 p-1 rounded-lg sm:rounded-xl border border-border/50">
-        <Button aria-label="Вид сеткой" variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-lg transition-all"
+      <div class="flex items-center bg-muted/50 p-1 rounded-3xl sm:rounded-3xl border border-border/50">
+        <Button aria-label="Вид сеткой" variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-3xl transition-all"
           :class="{ 'bg-background shadow-sm text-primary': viewMode === 'grid' }" @click="emit('update:viewMode', 'grid')">
           <LayoutGrid class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </Button>
-        <Button aria-label="Вид списком" variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-lg transition-all"
+        <Button aria-label="Вид списком" variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 rounded-3xl transition-all"
           :class="{ 'bg-background shadow-sm text-primary': viewMode === 'row' }" @click="emit('update:viewMode', 'row')">
           <LayoutList class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </Button>
@@ -100,7 +100,7 @@ function toggleFullscreen(event: Event) {
       <!-- Видеопотоки -->
       <template v-if="myStream">
         <div v-for="track in myStream.getVideoTracks()" :key="track.id"
-          class="relative group rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-900 aspect-video border-2 transition-all duration-500"
+          class="relative group rounded-3xl sm:rounded-3xl overflow-hidden bg-zinc-900 aspect-video border-2 transition-all duration-500"
           :class="isLocalSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-primary/10'"
           @dblclick="toggleFullscreen">
           <video v-stream="getOrCreateStream(track)" autoplay playsinline muted
@@ -116,7 +116,7 @@ function toggleFullscreen(event: Event) {
           </div>
           <div class="absolute top-2 sm:top-3 left-2 sm:left-3 flex items-center gap-2">
             <div
-              class="bg-primary/20 backdrop-blur-md border border-white/10 px-1.5 sm:px-2 py-0.5 rounded-lg flex items-center gap-1 sm:gap-1.5">
+              class="bg-primary/20 backdrop-blur-md border border-white/10 px-1.5 sm:px-2 py-0.5 rounded-3xl flex items-center gap-1 sm:gap-1.5">
               <div class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-primary"></div>
               <span class="text-[8px] sm:text-[9px] font-black text-white uppercase tracking-tighter">You</span>
             </div>
@@ -124,7 +124,7 @@ function toggleFullscreen(event: Event) {
           <div
             class="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between">
             <div
-              class="flex items-center gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl">
+              class="flex items-center gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-3xl sm:rounded-3xl">
               <span class="text-[10px] sm:text-xs font-bold text-white truncate max-w-[80px] sm:max-w-[100px]">{{
                 userName }}</span>
               <div class="flex items-center gap-1 border-l border-white/20 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
@@ -134,7 +134,7 @@ function toggleFullscreen(event: Event) {
               </div>
             </div>
             <button aria-label="На весь экран" @click.stop="toggleFullscreen"
-              class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg sm:rounded-xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
+              class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-3xl sm:rounded-3xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
               <Scan class="h-3 w-3 sm:w-4 sm:h-4" />
             </button>
           </div>
@@ -144,7 +144,7 @@ function toggleFullscreen(event: Event) {
       <template v-for="p in participants" :key="p.id">
         <template v-if="p.stream">
           <div v-for="track in p.stream.getVideoTracks()" :key="track.id"
-            class="relative group rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-900 aspect-video border-2 transition-all duration-500"
+            class="relative group rounded-3xl sm:rounded-3xl overflow-hidden bg-zinc-900 aspect-video border-2 transition-all duration-500"
             :class="p.isSpeaking ? 'border-green-500 ring-4 ring-green-500/20' : 'border-white/5'"
             @dblclick="toggleFullscreen">
             <video v-stream="getOrCreateStream(track)" autoplay playsinline
@@ -155,7 +155,7 @@ function toggleFullscreen(event: Event) {
             </div>
             <div class="absolute top-2 sm:top-3 left-2 sm:left-3">
               <div
-                class="bg-red-500/20 backdrop-blur-md border border-red-500/30 px-1.5 sm:px-2 py-0.5 rounded-lg flex items-center gap-1 sm:gap-1.5">
+                class="bg-red-500/20 backdrop-blur-md border border-red-500/30 px-1.5 sm:px-2 py-0.5 rounded-3xl flex items-center gap-1 sm:gap-1.5">
                 <div class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]">
                 </div><span
                   class="text-[8px] sm:text-[9px] font-black text-white uppercase tracking-tighter">Live</span>
@@ -164,7 +164,7 @@ function toggleFullscreen(event: Event) {
             <div
               class="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between">
               <div
-                class="flex items-center gap-1.5 sm:gap-2 bg-white/5 backdrop-blur-xl border border-white/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl shadow-2xl">
+                class="flex items-center gap-1.5 sm:gap-2 bg-white/5 backdrop-blur-xl border border-white/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-3xl sm:rounded-3xl shadow-2xl">
                 <span class="text-[10px] sm:text-xs font-bold text-white truncate max-w-[100px] sm:max-w-[120px]">{{
                   p.userName }}</span>
                 <div class="flex items-center border-l border-white/20 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
@@ -179,7 +179,7 @@ function toggleFullscreen(event: Event) {
                 </div>
               </div>
               <button aria-label="На весь экран" @click.stop="toggleFullscreen"
-                class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg sm:rounded-xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
+                class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-3xl sm:rounded-3xl text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
                 <Scan class="h-3 w-3 sm:w-4 sm:h-4" />
               </button>
             </div>

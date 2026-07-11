@@ -20,13 +20,13 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Card class="border-none shadow-xl rounded-none sm:rounded-2xl">
+  <Card class="border-none shadow-xl rounded-3xl sm:rounded-3xl">
     <CardHeader class="pb-2 px-4 sm:px-6">
       <CardTitle class="text-base sm:text-lg font-black uppercase tracking-tight">Участники</CardTitle>
     </CardHeader>
     <CardContent class="space-y-3 px-4 sm:px-6 pb-4 sm:pb-6">
       <div v-for="p in participants" :key="p.id"
-        class="flex items-center gap-4 sm:gap-6 rounded-xl border border-primary/5 bg-muted/20 p-2 sm:p-3 transition-all hover:bg-muted/30">
+        class="flex items-center gap-4 sm:gap-6 rounded-3xl border border-primary/5 bg-muted/20 p-2 sm:p-3 transition-all hover:bg-muted/30">
         <div
           class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-black shrink-0 transition-all duration-75 relative"
           :class="p.isSpeaking ? 'bg-primary text-primary-foreground ring-2 ring-green-500' : 'bg-muted text-muted-foreground'"
@@ -66,7 +66,7 @@ const emit = defineEmits<{
         </div>
 
         <Button variant="outline"
-          class="rounded-xl px-4 sm:px-6 h-9 sm:h-10 gap-2 border-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-all active:scale-95"
+          class="rounded-3xl px-4 sm:px-6 h-9 sm:h-10 gap-2 border-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-all active:scale-95"
           @click="emit('copyToClipboard', currentUrl)">
           <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
             {{ copiedLink === currentUrl ? 'Ссылка у вас!' : 'Пригласить' }}

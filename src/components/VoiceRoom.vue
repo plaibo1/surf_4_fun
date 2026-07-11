@@ -130,173 +130,157 @@ onUnmounted(() => {
     <!-- Левая колонка: Управление и Чат -->
     <div class="w-full space-y-4 sm:space-y-6 shrink-0 transition-all duration-700"
       :class="hasStreams ? 'xl:w-[550px] order-2 xl:order-1' : ''">
-      <!-- Главная панель комнаты -->
-      <Card
-        class="overflow-hidden border-none shadow-xl bg-gradient-to-br from-card to-muted/30 rounded-none sm:rounded-2xl">
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
-
-        <CardHeader
-          class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 px-4 sm:px-6">
-          <div class="space-y-1 w-full sm:w-auto">
-            <div class="flex items-center gap-2 sm:gap-3">
-              <CardTitle
-                class="text-xl sm:text-2xl font-black tracking-tighter text-foreground uppercase truncate max-w-[150px] sm:max-w-[200px]">
+      <!-- Главная панель комнаты (Command Center) -->
+      <div class="flex flex-col gap-4">
+        <!-- Room Identity & Top Actions -->
+        <div class="flex flex-col sm:flex-row gap-6 justify-between items-start sm:items-center bg-card/40 backdrop-blur-3xl p-6 sm:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden group">
+          <!-- Ambient glow -->
+          <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/30 transition-colors duration-1000"></div>
+          
+          <div class="flex flex-col gap-3 relative z-10">
+            <div class="flex items-center gap-4">
+              <h2 class="text-3xl sm:text-4xl font-black tracking-tighter text-foreground uppercase truncate max-w-[200px] sm:max-w-[300px]">
                 {{ roomId }}
-              </CardTitle>
-              <div class="flex items-center">
-                <Button aria-label="Скопировать ID комнаты" variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:bg-primary/10 transition-all"
+              </h2>
+              <div class="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
+                <Button aria-label="Скопировать ID" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground"
                   @click="copyToClipboard(roomId)">
-                  <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-500" />
-                  <Copy v-else class="h-4 w-4 text-muted-foreground" />
+                  <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-400" />
+                  <Copy v-else class="h-4 w-4" />
                 </Button>
-
-                <Button aria-label="Добавить в избранное" variant="ghost" size="icon"
-                  class="h-8 w-8 rounded-lg hover:bg-yellow-500/10 transition-all group/star"
+                <Button aria-label="В избранное" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 group/star text-muted-foreground hover:text-foreground"
                   @click="toggleFavorite(roomId)">
                   <Star class="h-4 w-4 transition-all"
-                    :class="isFavorite(roomId) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground group-hover/star:text-yellow-500'" />
+                    :class="isFavorite(roomId) ? 'text-yellow-400 fill-yellow-400' : 'group-hover/star:text-yellow-400'" />
                 </Button>
               </div>
-
-              <div
-                class="bg-primary/10 text-primary text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-primary/20">
-                Voice Room
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                <span class="relative flex h-1.5 w-1.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                </span>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-green-500">Live</span>
               </div>
+              <span class="text-xs font-bold text-muted-foreground uppercase tracking-widest">{{ participants.length + 1 }} Connected</span>
             </div>
           </div>
 
-          <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2">
-            <div class="flex -space-x-2">
+          <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto justify-between sm:justify-end">
+            <!-- Participants Avatars -->
+            <div class="flex -space-x-3 hover:space-x-1 transition-all duration-300">
               <div v-for="p in participants.slice(0, 3)" :key="p.id"
-                class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-background bg-primary/20 flex items-center justify-center text-[9px] sm:text-[10px] font-bold">
+                class="w-10 h-10 rounded-full border-2 border-background bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-xs font-black shadow-lg hover:-translate-y-1 transition-transform cursor-default">
                 {{ p.userName.charAt(0).toUpperCase() }}
               </div>
               <div v-if="participants.length > 3"
-                class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[9px] sm:text-[10px] font-bold">
+                class="w-10 h-10 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs font-black shadow-lg">
                 +{{ participants.length - 3 }}
               </div>
             </div>
-            <span class="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">{{ participants.length + 1
-              }} в сети</span>
+            
+            <Button variant="destructive" size="icon"
+              class="h-12 w-12 rounded-full shadow-lg shadow-destructive/20 hover:shadow-destructive/40 transition-all hover:-translate-y-1 active:scale-90 shrink-0" 
+              @click="onLeave" title="Выйти из комнаты" aria-label="Выйти из комнаты">
+              <LogOut class="h-5 w-5 ml-1" />
+            </Button>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent class="px-4 sm:px-6 pb-6 pt-2">
-          <div class="flex flex-col gap-2">
-            <!-- Основные переключатели -->
-            <div class="grid gap-2" :class="isVideoEnabled ? 'grid-cols-4 sm:grid-cols-3' : 'grid-cols-3'">
-              <Button aria-label="Демонстрация экрана" :variant="isScreenSharing ? 'secondary' : 'outline'"
-                class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
-                :class="isScreenSharing ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
-                @click="toggleScreenShare">
-                <Monitor class="h-4 w-4" />
-                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isScreenSharing ?
-                  'Экран' : 'Экран' }}</span>
-              </Button>
+        <!-- Action Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button aria-label="Демонстрация экрана" 
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group"
+            :class="isScreenSharing ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-primary-foreground' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
+            @click="toggleScreenShare">
+            <Monitor class="h-6 w-6 transition-transform group-hover:scale-110" />
+            <span class="text-[10px] font-bold uppercase tracking-widest">{{ isScreenSharing ? 'Экран в эфире' : 'Экран' }}</span>
+          </button>
 
-              <Button aria-label="Включить камеру" :variant="isVideoEnabled ? 'secondary' : 'outline'"
-                class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
-                :class="isVideoEnabled ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
-                @click="toggleVideo">
-                <Video class="h-4 w-4" />
-                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ isVideoEnabled ?
-                  'Камера' : 'Камера' }}</span>
-              </Button>
+          <button aria-label="Включить камеру" 
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group"
+            :class="isVideoEnabled ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-primary-foreground' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
+            @click="toggleVideo">
+            <Video class="h-6 w-6 transition-transform group-hover:scale-110" />
+            <span class="text-[10px] font-bold uppercase tracking-widest">{{ isVideoEnabled ? 'Камера вкл' : 'Камера' }}</span>
+          </button>
 
-              <Button v-if="isVideoEnabled" aria-label="Переключить камеру" variant="outline"
-                class="h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200 bg-muted/5 sm:hidden"
-                @click="switchCamera">
-                <RefreshCw class="h-4 w-4" />
-                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">{{ currentFacingMode ===
-                  'user' ? 'Front' : 'Back' }}</span>
-              </Button>
-
-              <Button aria-label="Совместный просмотр" :variant="isSharedPlayerVisible ? 'secondary' : 'outline'"
-                class="relative h-10 gap-2 border-primary/5 hover:border-primary/20 transition-all duration-200"
-                :class="isSharedPlayerVisible ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted/5'"
-                @click="isSharedPlayerVisible = !isSharedPlayerVisible">
-                <!-- Badge Beta -->
-                <div
-                  class="absolute -top-2 -right-1 px-1.5 py-0.5 bg-yellow-500 text-[8px] font-black text-yellow-950 rounded-full leading-none shadow-sm z-10 select-none border border-background">
-                  BETA
-                </div>
-
-                <div class="relative">
-                  <PlayCircle class="h-4 w-4" />
-                  <div v-if="sharedPlayerState.url"
-                    class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-red-500 border border-background"></div>
-                </div>
-                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">SyncWatch</span>
-              </Button>
+          <button aria-label="Совместный просмотр" 
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group relative overflow-hidden"
+            :class="isSharedPlayerVisible ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-primary-foreground' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
+            @click="isSharedPlayerVisible = !isSharedPlayerVisible">
+            <div class="absolute top-2 right-2 px-1.5 py-0.5 bg-yellow-400 text-yellow-950 text-[8px] font-black uppercase rounded-full shadow-sm">Beta</div>
+            <div class="relative">
+              <PlayCircle class="h-6 w-6 transition-transform group-hover:scale-110" />
+              <div v-if="sharedPlayerState.url && !isSharedPlayerVisible" class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
             </div>
+            <span class="text-[10px] font-bold uppercase tracking-widest">SyncWatch</span>
+          </button>
 
-            <!-- Вспомогательные действия -->
-            <div class="flex items-stretch gap-2">
-              <Button aria-label="Скопировать ссылку" variant="outline" size="lg"
-                class="flex-1 gap-2 border-primary/5 hover:border-primary/20 bg-muted/5 transition-all active:scale-95"
-                :class="{ 'border-green-500/50 bg-green-500/5 text-green-600': copiedLink === currentUrl }"
-                @click="copyToClipboard(currentUrl)">
-                <Check v-if="copiedLink === currentUrl" class="h-4 w-4" />
-                <Share2 v-else class="h-4 w-4" />
-                <span class="text-[10px] font-bold uppercase tracking-tight">
-                  {{ copiedLink === currentUrl ? 'Готово' : 'Пригласить друзей' }}
-                </span>
-              </Button>
+          <button aria-label="Пригласить друзей" 
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group"
+            :class="copiedLink === currentUrl ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
+            @click="copyToClipboard(currentUrl)">
+            <Share2 v-if="copiedLink !== currentUrl" class="h-6 w-6 transition-transform group-hover:scale-110" />
+            <Check v-else class="h-6 w-6 text-green-400" />
+            <span class="text-[10px] font-bold uppercase tracking-widest">{{ copiedLink === currentUrl ? 'Ссылка у вас!' : 'Пригласить' }}</span>
+          </button>
+        </div>
 
-              <Button variant="destructive" size="lg"
-                class="px-4 shadow-none transition-all hover:bg-destructive/90 active:scale-95" @click="onLeave"
-                title="Выйти из комнаты" aria-label="Выйти из комнаты">
-                <LogOut class="h-4 w-4 sm:mr-1" />
-                <span class="text-[10px] font-bold uppercase tracking-tight hidden sm:inline">Выход</span>
-              </Button>
-            </div>
+        <!-- Camera Switcher (Mobile Only) -->
+        <Button v-if="isVideoEnabled" aria-label="Переключить камеру" variant="outline"
+          class="h-12 w-full rounded-full gap-2 border-white/5 hover:bg-white/5 transition-all bg-card/40 sm:hidden mt-2"
+          @click="switchCamera">
+          <RefreshCw class="h-4 w-4" />
+          <span class="text-xs font-bold uppercase tracking-widest">Swap Camera ({{ currentFacingMode === 'user' ? 'Front' : 'Back' }})</span>
+        </Button>
+
+        <!-- Dynamic Status Messages -->
+        <div v-if="error || roomFull || volumeKing" class="flex flex-col gap-2 mt-2">
+          <div v-if="error" class="flex items-center gap-3 p-3 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold">
+            <div class="w-1.5 h-1.5 rounded-full bg-destructive shrink-0"></div>
+            {{ error }}
           </div>
-
-          <p v-if="error"
-            class="text-destructive text-[10px] sm:text-xs font-medium text-center bg-destructive/10 py-2 rounded-md border border-destructive/20">
-            {{ error }}</p>
-          <p v-if="roomFull"
-            class="text-destructive text-[10px] sm:text-xs font-medium text-center bg-destructive/10 py-2 rounded-md border border-destructive/20">
-            В комнате уже 5 человек.</p>
-
-          <div v-if="volumeKing"
-            class="mt-4 p-2 sm:p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 flex items-center justify-between shadow-inner">
-            <div class="flex items-center gap-2 sm:gap-3">
+          <div v-if="roomFull" class="flex items-center gap-3 p-3 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold">
+            <div class="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"></div>
+            Room is at maximum capacity (5/5).
+          </div>
+          
+          <div v-if="volumeKing" class="flex items-center justify-between p-4 rounded-3xl bg-gradient-to-r from-yellow-500/10 to-transparent border border-yellow-500/20 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 blur-[40px] rounded-full pointer-events-none"></div>
+            <div class="flex items-center gap-4 relative z-10">
               <div class="relative">
-                <div
-                  class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-yellow-500 text-yellow-950 flex items-center justify-center text-base sm:text-lg font-black shadow-lg shadow-yellow-500/20">
+                <div class="w-10 h-10 rounded-full bg-yellow-400 text-yellow-950 flex items-center justify-center text-lg font-black shadow-lg">
                   {{ volumeKing.name.charAt(0).toUpperCase() }}
                 </div>
-                <div class="absolute -top-3 sm:-top-4 -right-2 text-xl sm:text-2xl drop-shadow-md">👑</div>
+                <div class="absolute -top-3 -right-2 text-xl drop-shadow-md animate-bounce">👑</div>
               </div>
-              <div>
-                <p class="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-yellow-600/80">Volume King
-                </p>
-                <p class="text-xs sm:text-sm font-bold text-foreground truncate max-w-[80px] sm:max-w-none">{{
-                  volumeKing.name }}</p>
+              <div class="flex flex-col">
+                <span class="text-[9px] font-black uppercase tracking-widest text-yellow-500/80">Volume King</span>
+                <span class="text-sm font-bold text-yellow-400 truncate max-w-[120px] sm:max-w-none">{{ volumeKing.name }}</span>
               </div>
             </div>
-            <div
-              class="text-[8px] sm:text-[10px] font-mono font-bold bg-yellow-500/10 px-2 py-1 rounded text-yellow-700">
+            <div class="text-[10px] font-mono font-bold bg-yellow-500/20 px-2 py-1 rounded-full text-yellow-400 border border-yellow-500/20 relative z-10">
               PWR: {{ Math.round(volumeKing.maxVolume + 100) }}%
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <!-- Моя карточка -->
-      <Card class="border-primary/30 bg-primary/5 shadow-lg shadow-primary/5 relative overflow-hidden rounded-2xl">
+      <Card class="border-primary/30 bg-primary/5 shadow-lg shadow-primary/5 relative overflow-hidden rounded-3xl">
         <CardContent class="p-3 sm:p-4 flex flex-col items-center justify-between gap-4 sm:gap-6 relative z-10">
           <div class="flex items-center gap-4 sm:gap-6 w-full">
             <div class="relative group">
               <div
-                class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-black shrink-0 transition-all duration-75 shadow-2xl overflow-hidden"
+                class="w-12 h-12 sm:w-16 sm:h-16 rounded-3xl sm:rounded-3xl flex items-center justify-center text-xl sm:text-2xl font-black shrink-0 transition-all duration-75 shadow-2xl overflow-hidden"
                 :class="isLocalSpeaking ? 'bg-primary text-primary-foreground ring-4 ring-green-500/30' : 'bg-primary/20 text-primary'"
                 :style="{ transform: `scale(${1 + localAudioLevel * 0.15})` }">
                 {{ userName.charAt(0).toUpperCase() }}
                 <!-- Анимация волн когда говоришь -->
                 <span v-if="isLocalSpeaking"
-                  class="absolute -inset-1 rounded-xl sm:rounded-2xl border-2 border-green-500 animate-ping opacity-20"></span>
+                  class="absolute -inset-1 rounded-3xl sm:rounded-3xl border-2 border-green-500 animate-ping opacity-20"></span>
               </div>
               <div
                 class="absolute -bottom-1 -right-1 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border-2 sm:border-4 border-background shadow-lg transition-colors duration-300"
@@ -326,16 +310,16 @@ onUnmounted(() => {
             </div>
 
             <div
-              class="flex items-center gap-1 sm:gap-2 bg-background/80 backdrop-blur-sm p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-primary/10 shadow-inner">
+              class="flex items-center gap-1 sm:gap-2 bg-background/80 backdrop-blur-sm p-1 sm:p-2 rounded-3xl sm:rounded-3xl border border-primary/10 shadow-inner">
               <Button :variant="isNoiseSuppressionEnabled ? 'success' : 'ghost'" size="icon"
                 @click="toggleNoiseSuppression"
-                class="h-9 w-9 sm:h-11 sm:w-11 rounded-lg sm:rounded-xl transition-all hover:scale-105 active:scale-95"
+                class="h-9 w-9 sm:h-11 sm:w-11 rounded-3xl sm:rounded-3xl transition-all hover:scale-105 active:scale-95"
                 title="Подавление шума" aria-label="Подавление шума">
                 <Ear class="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <div class="h-6 sm:h-8 w-[1px] bg-border/50 mx-0.5 sm:mx-1"></div>
               <Button :variant="isTotalMuted ? 'destructive' : 'ghost'" @click="toggleTotalMute" size="icon"
-                class="h-9 w-9 sm:h-11 sm:w-11 rounded-lg sm:rounded-xl transition-all hover:scale-105 active:scale-95 group relative overflow-hidden"
+                class="h-9 w-9 sm:h-11 sm:w-11 rounded-3xl sm:rounded-3xl transition-all hover:scale-105 active:scale-95 group relative overflow-hidden"
                 title="Тотальный мут" aria-label="Тотальный мут">
                 <div v-if="isTotalMuted" class="relative z-10 flex items-center justify-center">
                   <Headphones class="h-4 w-4 sm:h-5 sm:w-5" />
@@ -344,7 +328,7 @@ onUnmounted(() => {
                 <Headphones v-else class="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <Button :variant="isMuted ? 'destructive' : 'default'" @click="toggleMute" size="icon"
-                class="h-9 w-9 sm:h-11 sm:w-11 rounded-lg sm:rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
+                class="h-9 w-9 sm:h-11 sm:w-11 rounded-3xl sm:rounded-3xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
                 title="Микрофон" aria-label="Включить/выключить микрофон">
                 <MicOff v-if="isMuted" class="h-4 w-4 sm:h-5 sm:w-5" />
                 <Mic v-else class="h-4 w-4 sm:h-5 sm:w-5" />
