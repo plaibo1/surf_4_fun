@@ -2,10 +2,6 @@
 import { ref, onMounted, nextTick } from 'vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
-import Card from '@/components/ui/card/Card.vue'
-import CardHeader from '@/components/ui/card/CardHeader.vue'
-import CardTitle from '@/components/ui/card/CardTitle.vue'
-import CardContent from '@/components/ui/card/CardContent.vue'
 import { User, Hash, ArrowRight, Star } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 
@@ -13,6 +9,7 @@ const { favorites } = useFavorites()
 const roomId = ref('')
 const userName = ref('')
 const userNameInput = ref<{ input: HTMLInputElement } | null>(null)
+const roomIdInputRef = ref<{ input: HTMLInputElement } | null>(null)
 const emit = defineEmits<{ joined: [roomId: string, userName: string] }>()
 
 const placeholders = [
@@ -37,11 +34,10 @@ onMounted(() => {
   if (roomId.value && userName.value) {
     onSubmit()
   } else {
-    // Focus if name is missing
+    // Focus logic
     nextTick(() => {
-      if (userNameInput.value?.input) {
-        userNameInput.value.input.focus()
-      }
+      const targetInput = userName.value ? roomIdInputRef : userNameInput
+      targetInput.value?.input?.focus()
     })
   }
 })
@@ -102,7 +98,7 @@ function onSubmit() {
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
               <Hash class="h-4 w-4" />
             </div>
-            <Input id="roomIdInput" name="room" autocomplete="off" v-model="roomId" placeholder="Придумайте любое название..."
+            <Input id="roomIdInput" name="room" autocomplete="off" ref="roomIdInputRef" v-model="roomId" placeholder="Придумайте любое название..."
               class="h-14 pl-12 pr-4 rounded-2xl border border-white/10 bg-black/50 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary transition-all text-base font-bold uppercase tracking-widest w-full"
               @keyup.enter="onSubmit" @input="roomId = roomId.toLowerCase()" />
           </div>

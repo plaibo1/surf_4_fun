@@ -191,7 +191,7 @@ onUnmounted(() => {
         <!-- Action Grid -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button aria-label="Демонстрация экрана" 
-            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group"
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-[20px] border transition-all duration-300 active:scale-95 group cursor-pointer"
             :class="isScreenSharing ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-primary-foreground' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
             @click="toggleScreenShare">
             <Monitor class="h-6 w-6 transition-transform group-hover:scale-110" />
@@ -199,7 +199,7 @@ onUnmounted(() => {
           </button>
 
           <button aria-label="Включить камеру" 
-            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group"
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-[20px] border transition-all duration-300 active:scale-95 group cursor-pointer"
             :class="isVideoEnabled ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-primary-foreground' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
             @click="toggleVideo">
             <Video class="h-6 w-6 transition-transform group-hover:scale-110" />
@@ -207,7 +207,7 @@ onUnmounted(() => {
           </button>
 
           <button aria-label="Совместный просмотр" 
-            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group relative overflow-hidden"
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-[20px] border transition-all duration-300 active:scale-95 group relative overflow-hidden cursor-pointer"
             :class="isSharedPlayerVisible ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-primary-foreground' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
             @click="isSharedPlayerVisible = !isSharedPlayerVisible">
             <div class="absolute top-2 right-2 px-1.5 py-0.5 bg-yellow-400 text-yellow-950 text-[8px] font-black uppercase rounded-full shadow-sm">Beta</div>
@@ -219,7 +219,7 @@ onUnmounted(() => {
           </button>
 
           <button aria-label="Пригласить друзей" 
-            class="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border transition-all duration-300 active:scale-95 group"
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-[20px] border transition-all duration-300 active:scale-95 group cursor-pointer"
             :class="copiedLink === currentUrl ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
             @click="copyToClipboard(currentUrl)">
             <Share2 v-if="copiedLink !== currentUrl" class="h-6 w-6 transition-transform group-hover:scale-110" />
