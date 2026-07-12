@@ -4,7 +4,7 @@ import { useVoiceRoom } from '@/composables/useVoiceRoom'
 import Button from '@/components/ui/button/Button.vue'
 import Card from '@/components/ui/card/Card.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
-import { Ear, Mic, MicOff, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, Star, PlayCircle, HeadphoneOff, RefreshCw } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Check, Headphones, LogOut, Video, Monitor, Share2, Star, PlayCircle, HeadphoneOff, RefreshCw } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 import ChatPanel from '@/components/ChatPanel.vue'
 import ParticipantList from '@/components/ParticipantList.vue'
@@ -156,31 +156,20 @@ onUnmounted(() => {
               <h2 class="text-3xl sm:text-4xl font-black tracking-tighter text-foreground uppercase truncate max-w-[200px] sm:max-w-[300px]">
                 {{ roomId }}
               </h2>
-              <div class="flex items-center gap-2">
-                <!-- Group 1: Copy ID & Favorite -->
-                <div class="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
-                  <Button aria-label="Скопировать ID" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground"
-                    @click="copyToClipboard(roomId)">
-                    <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-400" />
-                    <Copy v-else class="h-4 w-4" />
-                  </Button>
-                  <Button aria-label="В избранное" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 group/star text-muted-foreground hover:text-foreground"
-                    @click="toggleFavorite(roomId)">
-                    <Star class="h-4 w-4 transition-all"
-                      :class="isFavorite(roomId) ? 'text-yellow-400 fill-yellow-400' : 'group-hover/star:text-yellow-400'" />
-                  </Button>
-                </div>
+              <div class="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
+                <Button aria-label="В избранное" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 group/star text-muted-foreground hover:text-foreground"
+                  @click="toggleFavorite(roomId)">
+                  <Star class="h-4 w-4 transition-all"
+                    :class="isFavorite(roomId) ? 'text-yellow-400 fill-yellow-400' : 'group-hover/star:text-yellow-400'" />
+                </Button>
                 
-                <!-- Group 2: Share -->
-                <div class="flex items-center bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
-                  <Button aria-label="Пригласить друзей" variant="ghost" class="h-8 px-3 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground flex items-center gap-2"
-                    @click="copyToClipboard(currentUrl)"
-                    :class="{'text-green-400': copiedLink === currentUrl}">
-                    <Share2 v-if="copiedLink !== currentUrl" class="h-4 w-4 transition-all group-hover:scale-110" />
-                    <Check v-else class="h-4 w-4" />
-                    <span class="text-[10px] sm:text-xs font-bold uppercase tracking-widest">{{ copiedLink === currentUrl ? 'Скопировано' : 'Пригласить' }}</span>
-                  </Button>
-                </div>
+                <Button aria-label="Пригласить друзей" variant="ghost" class="h-8 px-3 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground flex items-center gap-2"
+                  @click="copyToClipboard(currentUrl)"
+                  :class="{'text-green-400': copiedLink === currentUrl}">
+                  <Share2 v-if="copiedLink !== currentUrl" class="h-4 w-4 transition-all group-hover:scale-110" />
+                  <Check v-else class="h-4 w-4" />
+                  <span class="text-[10px] sm:text-xs font-bold uppercase tracking-widest">{{ copiedLink === currentUrl ? 'Скопировано' : 'Пригласить' }}</span>
+                </Button>
               </div>
             </div>
             <div class="flex items-center gap-3">
@@ -197,9 +186,9 @@ onUnmounted(() => {
 
           <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto justify-between sm:justify-end">
             <!-- Participants Avatars -->
-            <div class="flex -space-x-3 hover:space-x-1 transition-all duration-300">
+            <div class="flex -space-x-3">
               <div v-for="p in participants.slice(0, 3)" :key="p.id"
-                class="w-10 h-10 rounded-full border-2 border-background bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-xs font-black shadow-lg hover:-translate-y-1 transition-transform cursor-default">
+                class="w-10 h-10 rounded-full border-2 border-background bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-xs font-black shadow-lg cursor-default">
                 {{ p.userName.charAt(0).toUpperCase() }}
               </div>
               <div v-if="participants.length > 3"
@@ -284,7 +273,7 @@ onUnmounted(() => {
                 <div class="w-10 h-10 rounded-full bg-yellow-400 text-yellow-950 flex items-center justify-center text-lg font-black shadow-lg">
                   {{ volumeKing.name.charAt(0).toUpperCase() }}
                 </div>
-                <div class="absolute -top-3 -right-2 text-xl drop-shadow-md animate-bounce">👑</div>
+                <div class="absolute -top-3 -right-2 text-xl drop-shadow-md">👑</div>
               </div>
               <div class="flex flex-col">
                 <span class="text-[9px] font-black uppercase tracking-widest text-yellow-500/80">Volume King</span>
