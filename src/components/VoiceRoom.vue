@@ -3,14 +3,14 @@ import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useVoiceRoom } from '@/composables/useVoiceRoom'
 import Button from '@/components/ui/button/Button.vue'
 import Card from '@/components/ui/card/Card.vue'
-import CardHeader from '@/components/ui/card/CardHeader.vue'
-import CardTitle from '@/components/ui/card/CardTitle.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
 import { Ear, Mic, MicOff, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, Star, PlayCircle, HeadphoneOff, RefreshCw } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 import ChatPanel from '@/components/ChatPanel.vue'
 import ParticipantList from '@/components/ParticipantList.vue'
 import VideoStreamGrid from '@/components/VideoStreamGrid.vue'
+import GamesPanel from '@/components/GamesPanel.vue'
+import { Gamepad2 } from 'lucide-vue-next'
 
 const props = defineProps<{
   roomId: string
@@ -51,14 +51,28 @@ const {
   toggleNoiseSuppression,
   messages,
   sendMessage,
+  ticTacToeState,
+  sendTicTacToeAction,
+  coinFlipState,
+  sendCoinFlipAction,
 } = useVoiceRoom()
 
 const isSharedPlayerVisible = ref(false)
+const isGamesVisible = ref(false)
+
+watch(() => ticTacToeState.value.isVisible, (visible) => {
+  if (visible) isGamesVisible.value = true
+})
+
+watch(() => coinFlipState.value.isVisible, (visible) => {
+  if (visible) isGamesVisible.value = true
+})
 
 const hasStreams = computed(() =>
   (myStream.value?.getVideoTracks()?.length ?? 0) > 0 ||
   participants.value.some(p => (p.stream?.getVideoTracks()?.length ?? 0) > 0) ||
-  isSharedPlayerVisible.value
+  isSharedPlayerVisible.value ||
+  isGamesVisible.value
 )
 
 watch(() => sharedPlayerState.value.url, (newUrl) => {
@@ -142,17 +156,31 @@ onUnmounted(() => {
               <h2 class="text-3xl sm:text-4xl font-black tracking-tighter text-foreground uppercase truncate max-w-[200px] sm:max-w-[300px]">
                 {{ roomId }}
               </h2>
-              <div class="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
-                <Button aria-label="Скопировать ID" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground"
-                  @click="copyToClipboard(roomId)">
-                  <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-400" />
-                  <Copy v-else class="h-4 w-4" />
-                </Button>
-                <Button aria-label="В избранное" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 group/star text-muted-foreground hover:text-foreground"
-                  @click="toggleFavorite(roomId)">
-                  <Star class="h-4 w-4 transition-all"
-                    :class="isFavorite(roomId) ? 'text-yellow-400 fill-yellow-400' : 'group-hover/star:text-yellow-400'" />
-                </Button>
+              <div class="flex items-center gap-2">
+                <!-- Group 1: Copy ID & Favorite -->
+                <div class="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
+                  <Button aria-label="Скопировать ID" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground"
+                    @click="copyToClipboard(roomId)">
+                    <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-400" />
+                    <Copy v-else class="h-4 w-4" />
+                  </Button>
+                  <Button aria-label="В избранное" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 group/star text-muted-foreground hover:text-foreground"
+                    @click="toggleFavorite(roomId)">
+                    <Star class="h-4 w-4 transition-all"
+                      :class="isFavorite(roomId) ? 'text-yellow-400 fill-yellow-400' : 'group-hover/star:text-yellow-400'" />
+                  </Button>
+                </div>
+                
+                <!-- Group 2: Share -->
+                <div class="flex items-center bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
+                  <Button aria-label="Пригласить друзей" variant="ghost" class="h-8 px-3 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground flex items-center gap-2"
+                    @click="copyToClipboard(currentUrl)"
+                    :class="{'text-green-400': copiedLink === currentUrl}">
+                    <Share2 v-if="copiedLink !== currentUrl" class="h-4 w-4 transition-all group-hover:scale-110" />
+                    <Check v-else class="h-4 w-4" />
+                    <span class="text-[10px] sm:text-xs font-bold uppercase tracking-widest">{{ copiedLink === currentUrl ? 'Скопировано' : 'Пригласить' }}</span>
+                  </Button>
+                </div>
               </div>
             </div>
             <div class="flex items-center gap-3">
@@ -218,13 +246,15 @@ onUnmounted(() => {
             <span class="text-[10px] font-bold uppercase tracking-widest">SyncWatch</span>
           </button>
 
-          <button aria-label="Пригласить друзей" 
-            class="flex flex-col items-center justify-center gap-3 p-4 rounded-[20px] border transition-all duration-300 active:scale-95 group cursor-pointer"
-            :class="copiedLink === currentUrl ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
-            @click="copyToClipboard(currentUrl)">
-            <Share2 v-if="copiedLink !== currentUrl" class="h-6 w-6 transition-transform group-hover:scale-110" />
-            <Check v-else class="h-6 w-6 text-green-400" />
-            <span class="text-[10px] font-bold uppercase tracking-widest">{{ copiedLink === currentUrl ? 'Ссылка у вас!' : 'Пригласить' }}</span>
+          <button aria-label="Крестики-Нолики" 
+            class="flex flex-col items-center justify-center gap-3 p-4 rounded-[20px] border transition-all duration-300 active:scale-95 group relative overflow-hidden cursor-pointer"
+            :class="isGamesVisible ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-primary-foreground' : 'bg-card/40 border-white/5 hover:bg-white/5 text-foreground'"
+            @click="isGamesVisible = !isGamesVisible">
+            <div class="absolute top-2 right-2 px-1.5 py-0.5 bg-yellow-400 text-yellow-950 text-[8px] font-black uppercase rounded-full shadow-sm">Beta</div>
+            <div class="relative">
+              <Gamepad2 class="h-6 w-6 transition-transform group-hover:scale-110" />
+            </div>
+            <span class="text-[10px] font-bold uppercase tracking-widest">Игры</span>
           </button>
         </div>
 
@@ -353,10 +383,12 @@ onUnmounted(() => {
       />
     </div>
 
-    <!-- Правая колонка: Видеопотоки -->
+    <!-- Правая колонка: Видеопотоки и Игры -->
     <div v-if="hasStreams"
       class="flex-1 min-w-0 order-1 xl:order-2 space-y-4 sm:space-y-6 animate-in slide-in-from-right-10 duration-700">
+      
       <VideoStreamGrid
+        v-if="(myStream?.getVideoTracks()?.length ?? 0) > 0 || participants.some(p => (p.stream?.getVideoTracks()?.length ?? 0) > 0) || isSharedPlayerVisible"
         v-model:view-mode="viewMode"
         :my-stream="myStream"
         :participants="participants"
@@ -369,6 +401,17 @@ onUnmounted(() => {
         :is-total-muted="isTotalMuted"
         :is-muted="isMuted"
         @send-player-command="sendPlayerCommand"
+      />
+
+      <GamesPanel
+        v-if="isGamesVisible"
+        :tic-tac-toe-state="ticTacToeState"
+        :coin-flip-state="coinFlipState"
+        :my-id="myId"
+        :user-name="userName"
+        @tic-tac-toe-action="sendTicTacToeAction"
+        @coin-flip-action="sendCoinFlipAction"
+        @close="isGamesVisible = false"
       />
     </div>
   </div>

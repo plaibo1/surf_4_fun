@@ -5,6 +5,8 @@ import { useSoundEffects } from "./useSoundEffects";
 import { useChat, type ChatMessage } from "./useChat";
 import { useSharedPlayer } from "./useSharedPlayer";
 import { useAudioAnalyzer } from "./useAudioAnalyzer";
+import { useTicTacToe } from "./useTicTacToe";
+import { useCoinFlip } from "./useCoinFlip";
 
 function getSocketUrl(): string {
   // В dev используем тот же origin — Vite проксирует /socket.io на бэкенд (избегаем SSL на порту 8000)
@@ -49,6 +51,8 @@ export function useVoiceRoom() {
 
   const { messages, setupChatListeners, sendMessage, clearMessages, setMessages } = useChat(socket, roomId);
   const { sharedPlayerState, setupSharedPlayerListeners, sendPlayerCommand, clearPlayerState, setPlayerState } = useSharedPlayer(socket, roomId);
+  const { ticTacToeState, setupTicTacToeListeners, sendTicTacToeAction, clearTicTacToeState, setTicTacToeState } = useTicTacToe(socket, roomId);
+  const { coinFlipState, setupCoinFlipListeners, sendCoinFlipAction, clearCoinFlipState, setCoinFlipState } = useCoinFlip(socket, roomId);
   const { volumeKing, speakingMap, audioLevelMap, setupAudioAnalyzerListeners, trackSpeaking, stopTrackingSpeaking, clearAudioAnalyzerState, setVolumeKing } = useAudioAnalyzer(socket, roomId, myId, userName, (id) => participants.value.get(id)?.userName);
 
 
@@ -346,6 +350,8 @@ export function useVoiceRoom() {
         volumeKing: roomKing,
         messages: roomMessages,
         sharedPlayerState: roomSharedPlayerState,
+        ticTacToeState: roomTicTacToeState,
+        coinFlipState: roomCoinFlipState,
       }: {
         yourId: string;
         participants: {
@@ -357,6 +363,8 @@ export function useVoiceRoom() {
         volumeKing?: { id: string; name: string; maxVolume: number } | null;
         messages: ChatMessage[];
         sharedPlayerState?: typeof sharedPlayerState.value;
+        ticTacToeState?: typeof ticTacToeState.value;
+        coinFlipState?: typeof coinFlipState.value;
       }) => {
         myId.value = yourId;
         isConnected.value = true;
@@ -365,8 +373,14 @@ export function useVoiceRoom() {
         if (roomSharedPlayerState) {
           setPlayerState(roomSharedPlayerState);
         }
+        if (roomTicTacToeState) {
+          setTicTacToeState(roomTicTacToeState);
+        }
         if (roomKing) {
           setVolumeKing(roomKing);
+        }
+        if (roomCoinFlipState) {
+          setCoinFlipState(roomCoinFlipState);
         }
         if (myStream.value) {
           trackSpeaking(yourId, myStream.value);
@@ -388,6 +402,8 @@ export function useVoiceRoom() {
     });
 
     setupSharedPlayerListeners(s);
+    setupTicTacToeListeners(s);
+    setupCoinFlipListeners(s);
     setupAudioAnalyzerListeners(s);
     setupChatListeners(s);
 
@@ -602,6 +618,8 @@ export function useVoiceRoom() {
     peerVolumes.value = {};
     clearMessages();
     clearPlayerState();
+    clearTicTacToeState();
+    clearCoinFlipState();
     clearAudioAnalyzerState();
   }
 
@@ -841,10 +859,14 @@ export function useVoiceRoom() {
     error,
     messages,
     sharedPlayerState,
+    ticTacToeState,
+    coinFlipState,
     join,
     leave,
     sendMessage,
     sendPlayerCommand,
+    sendTicTacToeAction,
+    sendCoinFlipAction,
     cameraTrack,
     screenTrack,
     toggleMute,

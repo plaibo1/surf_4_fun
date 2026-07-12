@@ -2,7 +2,7 @@
 import { ref, watch, nextTick } from 'vue'
 import Input from '@/components/ui/input/Input.vue'
 import Button from '@/components/ui/button/Button.vue'
-import { MessageSquare, Check, Copy, Swords, Send, TerminalSquare } from 'lucide-vue-next'
+import { MessageSquare, Check, Copy, Swords, Send } from 'lucide-vue-next'
 import { parseMessage } from '@/lib/utils'
 import type { ChatMessage } from '@/composables/useVoiceRoom'
 

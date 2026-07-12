@@ -35,6 +35,12 @@ const muteStatuses = new Map()
 // SharedPlayer state: { url: string, playing: boolean, currentTime: number, lastUpdate: number, platform: string }
 const roomSharedPlayerStates = new Map()
 
+// TicTacToe state: { board: (string|null)[], xPlayer: string|null, oPlayer: string|null, currentPlayer: 'X'|'O', winner: 'X'|'O'|'draw'|null, isVisible: boolean }
+const roomTicTacToeStates = new Map()
+
+// CoinFlip state: { isVisible: boolean, isFlipping: boolean, result: 'heads'|'tails'|null, flipperId: string|null, flipperName: string|null }
+const roomCoinFlipStates = new Map()
+
 io.on('connection', (socket) => {
   socket.on('join-room', async ({ roomId, userName, muteStatus }) => {
     const room = rooms.get(roomId) || new Set()
@@ -65,13 +71,17 @@ io.on('connection', (socket) => {
     const currentKing = roomVolumeKings.get(roomId)
     const messages = roomMessages.get(roomId) || []
     const sharedPlayerState = roomSharedPlayerStates.get(roomId)
+    const ticTacToeState = roomTicTacToeStates.get(roomId)
+    const coinFlipState = roomCoinFlipStates.get(roomId)
     
     socket.emit('joined', { 
       yourId: socket.id, 
       participants, 
       volumeKing: currentKing, 
       messages,
-      sharedPlayerState 
+      sharedPlayerState,
+      ticTacToeState,
+      coinFlipState
     })
     socket.to(roomId).emit('participant-joined', { 
       id: socket.id, 
@@ -105,6 +115,97 @@ io.on('connection', (socket) => {
     roomSharedPlayerStates.set(roomId, state)
     
     io.to(roomId).emit('player-state-update', state)
+  })
+
+  // TicTacToe Events
+  socket.on('tictactoe-action', ({ roomId, action }) => {
+    let state = roomTicTacToeStates.get(roomId) || {
+      board: Array(9).fill(null),
+      xPlayer: null,
+      oPlayer: null,
+      currentPlayer: 'X',
+      winner: null,
+      isVisible: false
+    }
+    
+    if (action.type === 'toggle-visibility') {
+      state.isVisible = action.isVisible
+    } else if (action.type === 'join') {
+      if (action.role === 'X') state.xPlayer = socket.id
+      if (action.role === 'O') state.oPlayer = socket.id
+    } else if (action.type === 'leave') {
+      if (state.xPlayer === socket.id) state.xPlayer = null
+      if (state.oPlayer === socket.id) state.oPlayer = null
+    } else if (action.type === 'move') {
+      if (!state.winner && state.board[action.index] === null) {
+        if ((state.currentPlayer === 'X' && state.xPlayer === socket.id) ||
+            (state.currentPlayer === 'O' && state.oPlayer === socket.id)) {
+          state.board[action.index] = state.currentPlayer
+          
+          const lines = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+          ]
+          for (let i = 0; i < lines.length; i++) {
+            const [a, b, c] = lines[i]
+            if (state.board[a] && state.board[a] === state.board[b] && state.board[a] === state.board[c]) {
+              state.winner = state.board[a]
+              break
+            }
+          }
+          if (!state.winner && !state.board.includes(null)) {
+            state.winner = 'draw'
+          }
+          if (!state.winner) {
+            state.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X'
+          }
+        }
+      }
+    } else if (action.type === 'reset') {
+      state.board = Array(9).fill(null)
+      state.currentPlayer = 'X'
+      state.winner = null
+    }
+    
+    roomTicTacToeStates.set(roomId, state)
+    io.to(roomId).emit('tictactoe-state-update', state)
+  })
+
+  // CoinFlip Events
+  socket.on('coinflip-action', ({ roomId, action }) => {
+    let state = roomCoinFlipStates.get(roomId) || {
+      isVisible: false,
+      isFlipping: false,
+      result: null,
+      flipperId: null,
+      flipperName: null
+    }
+
+    if (action.type === 'toggle-visibility') {
+      state.isVisible = action.isVisible
+    } else if (action.type === 'flip' && !state.isFlipping) {
+      state.isFlipping = true
+      state.result = Math.random() > 0.5 ? 'heads' : 'tails'
+      state.flipperId = socket.id
+      state.flipperName = action.flipperName
+      
+      roomCoinFlipStates.set(roomId, state)
+      io.to(roomId).emit('coinflip-state-update', state)
+
+      setTimeout(() => {
+        let currentState = roomCoinFlipStates.get(roomId)
+        if (currentState) {
+          currentState.isFlipping = false
+          roomCoinFlipStates.set(roomId, currentState)
+          io.to(roomId).emit('coinflip-state-update', currentState)
+        }
+      }, 2000)
+      return
+    }
+
+    roomCoinFlipStates.set(roomId, state)
+    io.to(roomId).emit('coinflip-state-update', state)
   })
 
   socket.on('update-streaming-status', ({ isVideoEnabled, isScreenSharing }) => {
@@ -176,6 +277,9 @@ io.on('connection', (socket) => {
           rooms.delete(roomId)
           roomVolumeKings.delete(roomId)
           roomMessages.delete(roomId)
+          roomSharedPlayerStates.delete(roomId)
+          roomTicTacToeStates.delete(roomId)
+          roomCoinFlipStates.delete(roomId)
         } else {
           rooms.set(roomId, room)
           // If the king leaves, we reset the king for the room
