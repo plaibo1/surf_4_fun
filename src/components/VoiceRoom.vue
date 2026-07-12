@@ -4,7 +4,7 @@ import { useVoiceRoom } from '@/composables/useVoiceRoom'
 import Button from '@/components/ui/button/Button.vue'
 import Card from '@/components/ui/card/Card.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
-import { Ear, Mic, MicOff, Check, Headphones, LogOut, Video, Monitor, Share2, Star, PlayCircle, HeadphoneOff, RefreshCw } from 'lucide-vue-next'
+import { Ear, Mic, MicOff, Copy, Check, Headphones, LogOut, Video, Monitor, Share2, Star, PlayCircle, HeadphoneOff, RefreshCw } from 'lucide-vue-next'
 import { useFavorites } from '@/composables/useFavorites'
 import ChatPanel from '@/components/ChatPanel.vue'
 import ParticipantList from '@/components/ParticipantList.vue'
@@ -147,23 +147,65 @@ onUnmounted(() => {
       <!-- Главная панель комнаты (Command Center) -->
       <div class="flex flex-col gap-4">
         <!-- Room Identity & Top Actions -->
-        <div class="flex flex-col sm:flex-row gap-6 justify-between items-start sm:items-center bg-card/40 backdrop-blur-3xl p-6 sm:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden group">
+        <div class="bg-card/40 backdrop-blur-3xl p-5 sm:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden group flex flex-col xl:flex-row gap-5 xl:gap-6 justify-between items-start xl:items-center">
           <!-- Ambient glow -->
           <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/30 transition-colors duration-1000"></div>
           
-          <div class="flex flex-col gap-3 relative z-10">
-            <div class="flex items-center gap-4">
-              <h2 class="text-3xl sm:text-4xl font-black tracking-tighter text-foreground uppercase truncate max-w-[200px] sm:max-w-[300px]">
+          <!-- Левая часть: Название, статус и мобильная кнопка выхода -->
+          <div class="flex flex-col gap-3 relative z-10 w-full min-w-0 xl:w-auto xl:flex-1">
+            <div class="flex items-center justify-between gap-4 w-full">
+              <h2 class="text-3xl sm:text-4xl font-black tracking-tighter text-foreground uppercase truncate">
                 {{ roomId }}
               </h2>
-              <div class="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
-                <Button aria-label="В избранное" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 group/star text-muted-foreground hover:text-foreground"
+              <!-- Кнопка выхода (Мобильная) -->
+              <Button variant="destructive" size="icon"
+                class="xl:hidden h-10 w-10 sm:h-12 sm:w-12 rounded-full shadow-lg shadow-destructive/20 hover:-translate-y-1 active:scale-90 shrink-0 transition-all" 
+                @click="onLeave" title="Выйти из комнаты" aria-label="Выйти из комнаты">
+                <LogOut class="h-4 w-4 sm:h-5 sm:w-5 sm:ml-1" />
+              </Button>
+            </div>
+            
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 shrink-0">
+                <span class="relative flex h-1.5 w-1.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                </span>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-green-500">Live</span>
+              </div>
+              
+              <!-- Small Participants Avatars -->
+              <div class="flex -space-x-2 shrink-0">
+                <div v-for="p in participants.slice(0, 3)" :key="p.id"
+                  class="w-6 h-6 rounded-full border border-background bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-[9px] font-black shadow-sm cursor-default">
+                  {{ p.userName.charAt(0).toUpperCase() }}
+                </div>
+                <div v-if="participants.length > 3"
+                  class="w-6 h-6 rounded-full border border-background bg-muted flex items-center justify-center text-[9px] font-black shadow-sm">
+                  +{{ participants.length - 3 }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Правая часть: Управление (Пилюля) и десктопная кнопка выхода -->
+          <div class="flex items-center justify-between xl:justify-end gap-4 relative z-10 w-full xl:w-auto shrink-0">
+            <!-- Action Pill (Scrollable on small screens if needed) -->
+            <div class="flex-1 xl:flex-none overflow-x-auto hide-scrollbar -mx-2 px-2 sm:mx-0 sm:px-0">
+              <div class="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md w-max">
+                <Button aria-label="Скопировать ID" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground shrink-0"
+                  @click="copyToClipboard(roomId)">
+                  <Check v-if="copiedLink === roomId" class="h-4 w-4 text-green-400" />
+                  <Copy v-else class="h-4 w-4" />
+                </Button>
+                
+                <Button aria-label="В избранное" variant="ghost" size="icon" class="h-8 w-8 rounded-full hover:bg-white/10 transition-all active:scale-95 group/star text-muted-foreground hover:text-foreground shrink-0"
                   @click="toggleFavorite(roomId)">
                   <Star class="h-4 w-4 transition-all"
                     :class="isFavorite(roomId) ? 'text-yellow-400 fill-yellow-400' : 'group-hover/star:text-yellow-400'" />
                 </Button>
                 
-                <Button aria-label="Пригласить друзей" variant="ghost" class="h-8 px-3 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground flex items-center gap-2"
+                <Button aria-label="Пригласить друзей" variant="ghost" class="h-8 px-3 rounded-full hover:bg-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground flex items-center gap-2 shrink-0"
                   @click="copyToClipboard(currentUrl)"
                   :class="{'text-green-400': copiedLink === currentUrl}">
                   <Share2 v-if="copiedLink !== currentUrl" class="h-4 w-4 transition-all group-hover:scale-110" />
@@ -172,33 +214,10 @@ onUnmounted(() => {
                 </Button>
               </div>
             </div>
-            <div class="flex items-center gap-3">
-              <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                <span class="relative flex h-1.5 w-1.5">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
-                </span>
-                <span class="text-[10px] font-bold uppercase tracking-widest text-green-500">Live</span>
-              </div>
-              <span class="text-xs font-bold text-muted-foreground uppercase tracking-widest">{{ participants.length + 1 }} Connected</span>
-            </div>
-          </div>
 
-          <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto justify-between sm:justify-end">
-            <!-- Participants Avatars -->
-            <div class="flex -space-x-3">
-              <div v-for="p in participants.slice(0, 3)" :key="p.id"
-                class="w-10 h-10 rounded-full border-2 border-background bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-xs font-black shadow-lg cursor-default">
-                {{ p.userName.charAt(0).toUpperCase() }}
-              </div>
-              <div v-if="participants.length > 3"
-                class="w-10 h-10 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs font-black shadow-lg">
-                +{{ participants.length - 3 }}
-              </div>
-            </div>
-            
+            <!-- Кнопка выхода (Десктоп) -->
             <Button variant="destructive" size="icon"
-              class="h-12 w-12 rounded-full shadow-lg shadow-destructive/20 hover:shadow-destructive/40 transition-all hover:-translate-y-1 active:scale-90 shrink-0" 
+              class="hidden xl:flex h-12 w-12 rounded-full shadow-lg shadow-destructive/20 hover:-translate-y-1 active:scale-90 shrink-0 transition-all" 
               @click="onLeave" title="Выйти из комнаты" aria-label="Выйти из комнаты">
               <LogOut class="h-5 w-5 ml-1" />
             </Button>
