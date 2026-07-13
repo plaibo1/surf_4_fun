@@ -843,6 +843,14 @@ export function useVoiceRoom() {
     }
   }
 
+  function resetAllGames() {
+    sendTicTacToeAction({ type: 'reset' });
+    sendTicTacToeAction({ type: 'toggle-visibility', isVisible: false });
+    sendRPSAction({ type: 'reset' });
+    sendRPSAction({ type: 'toggle-visibility', isVisible: false });
+    sendCoinFlipAction({ type: 'toggle-visibility', isVisible: false });
+  }
+
   onUnmounted(leave);
 
   return {
@@ -886,5 +894,6 @@ export function useVoiceRoom() {
     switchCamera,
     toggleScreenShare,
     toggleNoiseSuppression,
+    resetAllGames,
   };
 }

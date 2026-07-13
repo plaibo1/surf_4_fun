@@ -57,6 +57,7 @@ const {
   sendCoinFlipAction,
   rpsState,
   sendRPSAction,
+  resetAllGames,
 } = useVoiceRoom()
 
 const isSharedPlayerVisible = ref(false)
@@ -427,6 +428,7 @@ onUnmounted(() => {
         @tic-tac-toe-action="sendTicTacToeAction"
         @coin-flip-action="sendCoinFlipAction"
         @rps-action="sendRPSAction"
+        @reset-all-games="resetAllGames"
         @close="isGamesVisible = false"
       />
     </div>

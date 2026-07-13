@@ -20,6 +20,7 @@ const emit = defineEmits<{
   (e: 'ticTacToeAction', action: any): void
   (e: 'coinFlipAction', action: any): void
   (e: 'rpsAction', action: any): void
+  (e: 'resetAllGames'): void
   (e: 'close'): void
 }>()
 
@@ -45,9 +46,14 @@ function startRps() {
         </div>
         <h2 class="text-2xl font-black uppercase tracking-widest text-foreground">Игры</h2>
       </div>
-      <Button variant="ghost" size="icon" @click="$emit('close')" class="h-8 w-8 rounded-full hover:bg-white/10 text-muted-foreground hover:text-foreground">
-        <X class="h-4 w-4" />
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" class="text-[10px] sm:text-xs uppercase font-bold tracking-widest border-destructive/20 hover:bg-destructive/10 text-destructive/80 hover:text-destructive" @click="$emit('resetAllGames')">
+          Сбросить всё
+        </Button>
+        <Button variant="ghost" size="icon" @click="$emit('close')" class="h-8 w-8 rounded-full hover:bg-white/10 text-muted-foreground hover:text-foreground">
+          <X class="h-4 w-4" />
+        </Button>
+      </div>
     </div>
 
     <!-- Каталог игр -->
