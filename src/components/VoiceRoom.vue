@@ -55,6 +55,8 @@ const {
   sendTicTacToeAction,
   coinFlipState,
   sendCoinFlipAction,
+  rpsState,
+  sendRPSAction,
 } = useVoiceRoom()
 
 const isSharedPlayerVisible = ref(false)
@@ -65,6 +67,10 @@ watch(() => ticTacToeState.value.isVisible, (visible) => {
 })
 
 watch(() => coinFlipState.value.isVisible, (visible) => {
+  if (visible) isGamesVisible.value = true
+})
+
+watch(() => rpsState.value.isVisible, (visible) => {
   if (visible) isGamesVisible.value = true
 })
 
@@ -415,10 +421,12 @@ onUnmounted(() => {
         v-if="isGamesVisible"
         :tic-tac-toe-state="ticTacToeState"
         :coin-flip-state="coinFlipState"
+        :rps-state="rpsState"
         :my-id="myId"
         :user-name="userName"
         @tic-tac-toe-action="sendTicTacToeAction"
         @coin-flip-action="sendCoinFlipAction"
+        @rps-action="sendRPSAction"
         @close="isGamesVisible = false"
       />
     </div>

@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import TicTacToe from './TicTacToe.vue'
 import CoinFlip from './CoinFlip.vue'
+import RockPaperScissors from './RockPaperScissors.vue'
 import type { TicTacToeState } from '@/composables/useTicTacToe'
 import type { CoinFlipState } from '@/composables/useCoinFlip'
+import type { RPSState } from '@/composables/useRPS'
 import { Gamepad2, X } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
 
 const props = defineProps<{
   ticTacToeState: TicTacToeState
   coinFlipState: CoinFlipState
+  rpsState: RPSState
   myId: string | null
   userName: string | null
 }>()
@@ -16,6 +19,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'ticTacToeAction', action: any): void
   (e: 'coinFlipAction', action: any): void
+  (e: 'rpsAction', action: any): void
   (e: 'close'): void
 }>()
 
@@ -25,6 +29,10 @@ function startTicTacToe() {
 
 function startCoinFlip() {
   emit('coinFlipAction', { type: 'toggle-visibility', isVisible: true })
+}
+
+function startRps() {
+  emit('rpsAction', { type: 'toggle-visibility', isVisible: true })
 }
 </script>
 
@@ -43,7 +51,7 @@ function startCoinFlip() {
     </div>
 
     <!-- Каталог игр -->
-    <div v-if="!ticTacToeState.isVisible && !coinFlipState.isVisible" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-if="!ticTacToeState.isVisible && !coinFlipState.isVisible && !rpsState.isVisible" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div class="bg-black/20 p-5 rounded-2xl border border-white/5 hover:border-primary/50 transition-colors flex flex-col gap-4 group">
         <div class="flex items-center gap-4">
           <div class="text-4xl group-hover:scale-110 transition-transform">❌⭕</div>
@@ -65,6 +73,17 @@ function startCoinFlip() {
         </div>
         <Button class="w-full font-bold uppercase tracking-widest mt-auto shadow-lg shadow-yellow-500/20 bg-yellow-500 hover:bg-yellow-600 text-yellow-950" @click="startCoinFlip">Бросить</Button>
       </div>
+
+      <div class="bg-black/20 p-5 rounded-2xl border border-white/5 hover:border-blue-500/50 transition-colors flex flex-col gap-4 group">
+        <div class="flex items-center gap-4">
+          <div class="text-4xl group-hover:scale-110 transition-transform">🪨</div>
+          <div class="flex flex-col">
+            <h3 class="font-bold text-lg leading-tight">Цуефа</h3>
+            <span class="text-xs text-muted-foreground mt-1">Камень, ножницы...</span>
+          </div>
+        </div>
+        <Button class="w-full font-bold uppercase tracking-widest mt-auto shadow-lg shadow-blue-500/20 bg-blue-500 hover:bg-blue-600 text-white" @click="startRps">Играть</Button>
+      </div>
     </div>
 
     <!-- Активные игры -->
@@ -82,6 +101,15 @@ function startCoinFlip() {
         :my-id="myId"
         :user-name="userName"
         @action="$emit('coinFlipAction', $event)"
+      />
+    </div>
+
+    <div v-else-if="rpsState.isVisible" class="flex flex-col gap-4 animate-in fade-in duration-500">
+      <RockPaperScissors
+        :state="rpsState"
+        :my-id="myId"
+        :user-name="userName"
+        @action="$emit('rpsAction', $event)"
       />
     </div>
   </div>

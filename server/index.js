@@ -41,6 +41,9 @@ const roomTicTacToeStates = new Map()
 // CoinFlip state: { isVisible: boolean, isFlipping: boolean, result: 'heads'|'tails'|null, flipperId: string|null, flipperName: string|null }
 const roomCoinFlipStates = new Map()
 
+// RPS state: { isVisible: boolean, p1Id: string|null, p2Id: string|null, p1Choice: string|null, p2Choice: string|null, winner: 'p1'|'p2'|'draw'|null }
+const roomRpsStates = new Map()
+
 io.on('connection', (socket) => {
   socket.on('join-room', async ({ roomId, userName, muteStatus }) => {
     const room = rooms.get(roomId) || new Set()
@@ -73,6 +76,7 @@ io.on('connection', (socket) => {
     const sharedPlayerState = roomSharedPlayerStates.get(roomId)
     const ticTacToeState = roomTicTacToeStates.get(roomId)
     const coinFlipState = roomCoinFlipStates.get(roomId)
+    const rpsState = roomRpsStates.get(roomId)
     
     socket.emit('joined', { 
       yourId: socket.id, 
@@ -81,7 +85,8 @@ io.on('connection', (socket) => {
       messages,
       sharedPlayerState,
       ticTacToeState,
-      coinFlipState
+      coinFlipState,
+      rpsState
     })
     socket.to(roomId).emit('participant-joined', { 
       id: socket.id, 
@@ -208,6 +213,85 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('coinflip-state-update', state)
   })
 
+  // RPS Events
+  socket.on('rps-action', ({ roomId, action }) => {
+    let state = roomRpsStates.get(roomId) || {
+      isVisible: false,
+      p1Id: null,
+      p2Id: null,
+      p1Choice: null,
+      p2Choice: null,
+      winner: null
+    }
+
+    if (action.type === 'toggle-visibility') {
+      state.isVisible = action.isVisible
+    } else if (action.type === 'join') {
+      if (action.role === 'p1') state.p1Id = socket.id
+      if (action.role === 'p2') state.p2Id = socket.id
+    } else if (action.type === 'leave') {
+      if (state.p1Id === socket.id) {
+        state.p1Id = null
+        state.p1Choice = null
+      }
+      if (state.p2Id === socket.id) {
+        state.p2Id = null
+        state.p2Choice = null
+      }
+      state.winner = null
+    } else if (action.type === 'choice') {
+      if (state.p1Id === socket.id) state.p1Choice = action.choice
+      if (state.p2Id === socket.id) state.p2Choice = action.choice
+
+      if (state.p1Choice && state.p2Choice) {
+        const c1 = state.p1Choice
+        const c2 = state.p2Choice
+        if (c1 === c2) {
+          state.winner = 'draw'
+        } else if (
+          (c1 === 'rock' && c2 === 'scissors') ||
+          (c1 === 'paper' && c2 === 'rock') ||
+          (c1 === 'scissors' && c2 === 'paper')
+        ) {
+          state.winner = 'p1'
+        } else {
+          state.winner = 'p2'
+        }
+      }
+    } else if (action.type === 'reset') {
+      state.p1Choice = null
+      state.p2Choice = null
+      state.winner = null
+    }
+
+    roomRpsStates.set(roomId, state)
+    
+    // We want to hide the other player's choice until both have chosen
+    if (state.p1Choice && state.p2Choice) {
+      io.to(roomId).emit('rps-state-update', state)
+    } else {
+      // Send masked state
+      const room = rooms.get(roomId)
+      if (room) {
+        for (const sid of room) {
+          const s = io.sockets.sockets.get(sid)
+          if (s) {
+            const maskedState = { ...state }
+            if (sid === state.p1Id) {
+              maskedState.p2Choice = maskedState.p2Choice ? 'hidden' : null
+            } else if (sid === state.p2Id) {
+              maskedState.p1Choice = maskedState.p1Choice ? 'hidden' : null
+            } else {
+              maskedState.p1Choice = maskedState.p1Choice ? 'hidden' : null
+              maskedState.p2Choice = maskedState.p2Choice ? 'hidden' : null
+            }
+            s.emit('rps-state-update', maskedState)
+          }
+        }
+      }
+    }
+  })
+
   socket.on('update-streaming-status', ({ isVideoEnabled, isScreenSharing }) => {
     const status = { isVideoEnabled, isScreenSharing }
     streamingStatuses.set(socket.id, status)
@@ -280,6 +364,7 @@ io.on('connection', (socket) => {
           roomSharedPlayerStates.delete(roomId)
           roomTicTacToeStates.delete(roomId)
           roomCoinFlipStates.delete(roomId)
+          roomRpsStates.delete(roomId)
         } else {
           rooms.set(roomId, room)
           // If the king leaves, we reset the king for the room

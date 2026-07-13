@@ -7,6 +7,7 @@ import { useSharedPlayer } from "./useSharedPlayer";
 import { useAudioAnalyzer } from "./useAudioAnalyzer";
 import { useTicTacToe } from "./useTicTacToe";
 import { useCoinFlip } from "./useCoinFlip";
+import { useRPS } from "./useRPS";
 
 function getSocketUrl(): string {
   // В dev используем тот же origin — Vite проксирует /socket.io на бэкенд (избегаем SSL на порту 8000)
@@ -53,6 +54,7 @@ export function useVoiceRoom() {
   const { sharedPlayerState, setupSharedPlayerListeners, sendPlayerCommand, clearPlayerState, setPlayerState } = useSharedPlayer(socket, roomId);
   const { ticTacToeState, setupTicTacToeListeners, sendTicTacToeAction, clearTicTacToeState, setTicTacToeState } = useTicTacToe(socket, roomId);
   const { coinFlipState, setupCoinFlipListeners, sendCoinFlipAction, clearCoinFlipState, setCoinFlipState } = useCoinFlip(socket, roomId);
+  const { rpsState, setupRPSListeners, sendRPSAction, clearRPSState, setRPSState } = useRPS(socket, roomId);
   const { volumeKing, speakingMap, audioLevelMap, setupAudioAnalyzerListeners, trackSpeaking, stopTrackingSpeaking, clearAudioAnalyzerState, setVolumeKing } = useAudioAnalyzer(socket, roomId, myId, userName, (id) => participants.value.get(id)?.userName);
 
 
@@ -352,6 +354,7 @@ export function useVoiceRoom() {
         sharedPlayerState: roomSharedPlayerState,
         ticTacToeState: roomTicTacToeState,
         coinFlipState: roomCoinFlipState,
+        rpsState: roomRpsState,
       }: {
         yourId: string;
         participants: {
@@ -365,6 +368,7 @@ export function useVoiceRoom() {
         sharedPlayerState?: typeof sharedPlayerState.value;
         ticTacToeState?: typeof ticTacToeState.value;
         coinFlipState?: typeof coinFlipState.value;
+        rpsState?: typeof rpsState.value;
       }) => {
         myId.value = yourId;
         isConnected.value = true;
@@ -381,6 +385,9 @@ export function useVoiceRoom() {
         }
         if (roomCoinFlipState) {
           setCoinFlipState(roomCoinFlipState);
+        }
+        if (roomRpsState) {
+          setRPSState(roomRpsState);
         }
         if (myStream.value) {
           trackSpeaking(yourId, myStream.value);
@@ -404,6 +411,7 @@ export function useVoiceRoom() {
     setupSharedPlayerListeners(s);
     setupTicTacToeListeners(s);
     setupCoinFlipListeners(s);
+    setupRPSListeners(s);
     setupAudioAnalyzerListeners(s);
     setupChatListeners(s);
 
@@ -620,6 +628,7 @@ export function useVoiceRoom() {
     clearPlayerState();
     clearTicTacToeState();
     clearCoinFlipState();
+    clearRPSState();
     clearAudioAnalyzerState();
   }
 
@@ -861,12 +870,14 @@ export function useVoiceRoom() {
     sharedPlayerState,
     ticTacToeState,
     coinFlipState,
+    rpsState,
     join,
     leave,
     sendMessage,
     sendPlayerCommand,
     sendTicTacToeAction,
     sendCoinFlipAction,
+    sendRPSAction,
     cameraTrack,
     screenTrack,
     toggleMute,
