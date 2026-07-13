@@ -292,6 +292,41 @@ io.on('connection', (socket) => {
     }
   })
 
+  // Reset All Games Event
+  socket.on('reset-all-games', ({ roomId }) => {
+    const tttState = {
+      board: Array(9).fill(null),
+      xPlayer: null,
+      oPlayer: null,
+      currentPlayer: 'X',
+      winner: null,
+      isVisible: false
+    }
+    roomTicTacToeStates.set(roomId, tttState)
+    io.to(roomId).emit('tictactoe-state-update', tttState)
+
+    const cfState = {
+      isVisible: false,
+      isFlipping: false,
+      result: null,
+      flipperId: null,
+      flipperName: null
+    }
+    roomCoinFlipStates.set(roomId, cfState)
+    io.to(roomId).emit('coinflip-state-update', cfState)
+
+    const rpsState = {
+      isVisible: false,
+      p1Id: null,
+      p2Id: null,
+      p1Choice: null,
+      p2Choice: null,
+      winner: null
+    }
+    roomRpsStates.set(roomId, rpsState)
+    io.to(roomId).emit('rps-state-update', rpsState)
+  })
+
   socket.on('update-streaming-status', ({ isVideoEnabled, isScreenSharing }) => {
     const status = { isVideoEnabled, isScreenSharing }
     streamingStatuses.set(socket.id, status)

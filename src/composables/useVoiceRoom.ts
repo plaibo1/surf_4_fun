@@ -844,11 +844,7 @@ export function useVoiceRoom() {
   }
 
   function resetAllGames() {
-    sendTicTacToeAction({ type: 'reset' });
-    sendTicTacToeAction({ type: 'toggle-visibility', isVisible: false });
-    sendRPSAction({ type: 'reset' });
-    sendRPSAction({ type: 'toggle-visibility', isVisible: false });
-    sendCoinFlipAction({ type: 'toggle-visibility', isVisible: false });
+    socket.value?.emit('reset-all-games', { roomId: roomId.value });
   }
 
   onUnmounted(leave);
